@@ -12,7 +12,7 @@ STATIC=Path(__file__).resolve().parents[1]/'src/yanhe_sentinel/web/static'
 def test_ui_catalog_covers_explicit_translation_keys():
     dictionary=json.loads((STATIC/'en.json').read_text('utf8'))
     keys=set()
-    for name in ('app.js','workspace.js'):
+    for name in ('app.js','workspace.js','study.js'):
         source=(STATIC/name).read_text('utf8')
         keys.update(json.loads(match) for match in re.findall(r'ui\.t\(("(?:[^"\\]|\\.)*")\)',source))
         keys.update(re.findall(r"ui\.t\('([^']*)'\)",source))

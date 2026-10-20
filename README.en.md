@@ -11,6 +11,7 @@ This is a local web workspace, not an official university product. Model results
 - **Course library:** automatically retain browsed courses and processed lectures; view saved reports offline, search, add notes, star, archive and restore courses.
 - **Batch analysis:** select multiple courses, refresh their recordings and queue unfinished lectures. Completed and already queued lectures are skipped by default. Access failures are reported per course.
 - **Task queue:** view stages and progress, stop tasks or resume interrupted processing while keeping successful cached results.
+- **Study workspace:** search existing transcripts, seek by timestamp and change playback speed. Generate topical chapters, summaries and study points with original evidence using the configured analysis model. Supports Chinese/English notes, cached resume and Markdown export.
 - **Reports:** filter by course, status or keyword; replay original recordings and clips, mark manual reviews and export a ZIP.
 - **Self-hosted models and online APIs:** choose each independently for transcription and notice analysis. Mix self-hosted transcription with online analysis, or the reverse. Compatible APIs and Gemini, Groq and DeepSeek presets are supported.
 - **Chinese and English UI:** switch without reloading. Course titles, notes, subtitles and evidence stay in their original language; changing UI language makes no model calls.
@@ -68,6 +69,16 @@ See [remote model deployment](docs/REMOTE_MODELS.md) and the configurable `scrip
 4. Filter reports, replay evidence and mark your own reviews.
 
 Archiving hides a course without deleting recordings, subtitles or reports. After a school session expires, reconnect to download new recordings; existing reports remain available offline.
+
+## Study workspace
+
+Choose a lecture in **Study**, or open it from a notice report or saved course. Transcript search and timestamp seeking make no model calls. **Generate chapters and notes** invokes your current analysis model, whether self-hosted or online. Provider charges may apply to online APIs.
+
+Long transcripts are processed in windows of up to 160 segments, approximately 15 minutes or 10,000 characters. Structured note generation uses standard mode. Invalid boundaries trigger a source-based single-chapter retry; results that still fail validation are not accepted. The model divides each window into topics; similar topics may appear on either side of a window boundary. The application validates continuous chapter coverage and in-chapter citations, then derives times and copies evidence directly from original segments. This validates references, not the semantic correctness of model summaries. Missing speech and misrecognized formulas still require review. Generated notes summarize available transcripts; original slide files must be obtained separately.
+
+Successful windows are cached privately per lecture. Stopping takes effect after the current request finishes. Resume reuses successful windows; regeneration calls the model again. A changed transcript marks old notes as outdated. Plain TXT files support notes and segment references but have no timestamp seeking. Saved notes remain readable offline and can be exported as Markdown.
+
+Before upgrading an active workspace, stop its tasks to preserve cached results. Reconnect to the school platform after restarting, then resume tasks in the queue.
 
 ## CLI and tests
 

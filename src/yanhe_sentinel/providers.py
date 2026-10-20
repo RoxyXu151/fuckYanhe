@@ -75,13 +75,13 @@ class MockProvider:
 class OpenAICompatibleProvider:
     name = 'openai-compatible'
 
-    def __init__(self, *, key=None, base=None, model=None):
+    def __init__(self, *, key=None, base=None, model=None, allow_no_key=False):
         self.key = key if key is not None else os.environ.get('YANHE_API_KEY', '')
         self.base = (base if base is not None else os.environ.get('YANHE_BASE_URL', '')).rstrip('/')
         self.model = model if model is not None else os.environ.get('YANHE_MODEL', '')
         self.qwen_thinking = os.environ.get('YANHE_QWEN_THINKING') == '1'
         url = urlsplit(self.base)
-        if (not self.key and os.environ.get('YANHE_ALLOW_NO_KEY') != '1') or not self.model or not self.base:
+        if (not self.key and not allow_no_key and os.environ.get('YANHE_ALLOW_NO_KEY') != '1') or not self.model or not self.base:
             raise ProviderError('请设置 YANHE_API_KEY、YANHE_BASE_URL、YANHE_MODEL')
         if url.username or url.password or url.query or url.fragment or not url.hostname:
             raise ProviderError('模型地址不能包含凭据、查询参数或片段')

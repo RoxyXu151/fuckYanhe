@@ -9,7 +9,7 @@ from urllib.parse import urlsplit
 import uuid
 import zipfile
 
-from fastapi import FastAPI, File, Request, UploadFile
+from fastapi import FastAPI, File, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -23,6 +23,7 @@ from .auth import BrowserLogin
 from .jobs import JobRunner, atomic_json
 from .models import BatchRequest, JobRequest, LibraryUpdate, ModelSettings
 from .library import CourseLibrary
+from .learning import StudyRequest, StudyRunner
 
 
 @dataclass
@@ -48,6 +49,7 @@ def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None,
     uploads = root / 'uploads'
     uploads.mkdir(exist_ok=True)
     jobs = runner or JobRunner(root / 'jobs')
+    study = StudyRunner(jobs)
     library = CourseLibrary(root / 'library.json')
     login = login_manager or BrowserLogin(client_factory=client_factory)
     sessions, lock = {}, threading.RLock()
@@ -56,10 +58,12 @@ def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None,
     async def lifespan(app):
         yield
         login.close()
+        study.close()
         jobs.close()
 
     app = FastAPI(title='延河课堂重要事项雷达', lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     app.state.jobs, app.state.login, app.state.sessions = jobs, login, sessions
+    app.state.study = study
     app.add_middleware(SessionMiddleware, secret_key=secrets.token_hex(32), session_cookie='yanhe_workspace',
                        same_site='strict', https_only=False, max_age=43200)
 
@@ -127,7 +131,7 @@ def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None,
         return {'csrf': request.session['csrf'], 'auth': {
             'connected': bool(session.portal), 'display_name': (session.user or {}).get('display_name', ''),
             **session.login_status}, 'settings': session.settings.public(), 'jobs': jobs.list(),
-            'library': library.snapshot(jobs.list())}
+            'library': library.snapshot(jobs.list()), 'features': {'study': True}}
 
     @app.post('/api/auth/browser')
     def browser_login(request: Request):
@@ -363,6 +367,44 @@ def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None,
         reviews_file = directory / 'reviews.json'
         reviews = json.loads(reviews_file.read_text('utf-8')) if reviews_file.exists() else {}
         return {'report': data, 'links': links, 'event_links': event_links, 'reviews': reviews}
+
+    @app.get('/api/jobs/{job_id}/learning')
+    def learning(job_id: str, request: Request):
+        session_for(request)
+        job = jobs.get(job_id)
+        data = study.snapshot(job_id)
+        directory = jobs.root / job_id
+        data['video'] = file_url(job_id, directory / job['media_file']) if job.get('media_file') and Path(job['media_file']).suffix.lower() not in ('.srt', '.vtt', '.txt') else None
+        data['export'] = file_url(job_id, directory / 'analysis/learning.md') if data.get('chapters') else None
+        return data
+
+    @app.get('/api/jobs/{job_id}/transcript')
+    def transcript_page(job_id: str, request: Request, offset: int = Query(0, ge=0),
+                        limit: int = Query(80, ge=1, le=200), q: str = Query('', max_length=500),
+                        chapter: int | None = Query(None, ge=0)):
+        session_for(request)
+        _, segments = study.source(job_id)
+        if chapter is not None:
+            chapters = study.snapshot(job_id)['chapters']
+            if chapter >= len(chapters):
+                raise ValueError('章节不存在或需要重新生成')
+            selected = chapters[chapter]
+            positions = {s.id: i for i, s in enumerate(segments)}
+            segments = segments[positions[selected['start_id']]:positions[selected['end_id']]+1]
+        if q.strip():
+            segments = [s for s in segments if q.strip().casefold() in s.text.casefold()]
+        return {'items': [s.model_dump() for s in segments[offset:offset+limit]],
+                'total': len(segments), 'offset': offset, 'limit': limit}
+
+    @app.post('/api/jobs/{job_id}/learning')
+    def generate_learning(job_id: str, body: StudyRequest, request: Request):
+        session = session_for(request, True)
+        return study.start(job_id, session.settings, body)
+
+    @app.post('/api/jobs/{job_id}/learning/cancel')
+    def cancel_learning(job_id: str, request: Request):
+        session_for(request, True)
+        return study.cancel(job_id)
 
     @app.put('/api/jobs/{job_id}/reviews/{event_id}')
     def review(job_id: str, event_id: str, body: ReviewInput, request: Request):
