@@ -8,6 +8,8 @@ This is a local web workspace, not an official university product. Model results
 
 ## Features
 
+- **Overview and readiness:** onboarding steps, media tools, storage status and read-only model checks. Optionally remember model endpoints and names without storing keys.
+
 - **Course library:** automatically retain browsed courses and processed lectures; view saved reports offline, search, add notes, star, archive and restore courses.
 - **Batch analysis:** select multiple courses, refresh their recordings and queue unfinished lectures. Completed and already queued lectures are skipped by default. Access failures are reported per course.
 - **Task queue:** view stages and progress, stop tasks or resume interrupted processing while keeping successful cached results.
@@ -51,7 +53,7 @@ In **Model settings**, choose **Online API** or **Self-hosted open-source model*
 
 Self-hosted services with authentication still need their own key. Remote endpoints require HTTPS; use an SSH tunnel to loopback for remote HTTP servers. API pricing, quotas and available models depend on your provider and account. Failed requests never trigger an automatic switch to another provider or paid plan.
 
-Keys remain in the current server session only. A blank password field preserves a key only for the **same service**. Changing an endpoint, provider or deployment type clears its previous key before saving, so credentials are not forwarded to another service. Browser preferences never contain model keys.
+Opt in to remember non-secret endpoints and model names locally; uncheck and save to remove these preferences. Keys remain in the current server session only. A blank password field preserves a key only for the **same service**. Changing an endpoint, provider or deployment type clears its previous key before saving, so credentials are not forwarded to another service. Browser preferences never contain model keys.
 
 Changing settings does not rerun completed tasks. Explicitly resume or reanalyze a report to invoke models again.
 
@@ -63,6 +65,8 @@ See [remote model deployment](docs/REMOTE_MODELS.md) and the configurable `scrip
 
 ## Workflow
 
+Select stopped or failed tasks in the queue and resume them together, reusing successful caches. Completed or active tasks are skipped; school tasks that require reconnection receive a specific prompt.
+
 1. Connect in **Add courses** and browse lectures. Course metadata is retained in the library.
 2. Select lectures within a course, or select courses in the library and choose **Analyze selected courses**.
 3. Check the queue. Incomplete model configuration is rejected before batch tasks are queued.
@@ -71,6 +75,8 @@ See [remote model deployment](docs/REMOTE_MODELS.md) and the configurable `scrip
 Archiving hides a course without deleting recordings, subtitles or reports. After a school session expires, reconnect to download new recordings; existing reports remain available offline.
 
 ## Study workspace
+
+Personal notes, original-source bookmarks, playback position and speed are saved locally. Unsaved drafts survive page switches; URLs restore the current lecture after reload. Choose **Resume last playback** to continue. Changed transcripts mark old positions and citations as stale. Regeneration retains the previous complete notes, which can be restored without another model call.
 
 Choose a lecture in **Study**, or open it from a notice report or saved course. Transcript search and timestamp seeking make no model calls. **Generate chapters and notes** invokes your current analysis model, whether self-hosted or online. Provider charges may apply to online APIs.
 
@@ -101,6 +107,8 @@ python scripts/check_publication.py
 ```
 
 See [privacy boundaries](docs/PRIVACY.md). Respect school policies and the privacy of instructors and classmates.
+
+See the [product review](docs/PRODUCT_REVIEW.md) for the assessment, implemented improvements and remaining boundaries.
 
 ## License
 

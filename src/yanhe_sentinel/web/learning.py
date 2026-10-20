@@ -153,6 +153,21 @@ class StudyRunner:
         job = self.jobs.get(job_id)
         return job, transcript(self.jobs.root / job_id, job)
 
+    def list_status(self):
+        result = []
+        for job in self.jobs.list():
+            path = self.jobs.root / job['id'] / 'analysis/learning.json'
+            try:
+                saved = json.loads(path.read_text('utf-8'))
+                status = saved['status']
+                if status in ('running', 'queued') and job['id'] not in self.active:
+                    status = 'interrupted'
+                result.append({'id': job['id'], 'title': job['title'], 'status': status,
+                               'current': saved['current'], 'total': saved['total']})
+            except (OSError, ValueError, KeyError):
+                continue
+        return result
+
     def snapshot(self, job_id):
         job, segments = self.source(job_id)
         source_hash = digest([s.model_dump() for s in segments])
@@ -164,6 +179,16 @@ class StudyRunner:
                 state['status'] = 'interrupted'
             if state.get('source_hash') and state['source_hash'] != source_hash:
                 state.update(status='outdated', chapters=[], current=0)
+            previous = path.with_name('learning.previous.json')
+            state['previous_available'] = False
+            if previous.exists():
+                try:
+                    saved = json.loads(previous.read_text('utf-8'))
+                    state['previous_available'] = (saved.get('status') == 'completed'
+                        and saved.get('source_hash') == source_hash
+                        and (state['status'] != 'completed' or saved.get('chapters') != state.get('chapters')))
+                except (OSError, ValueError):
+                    pass
         return {**state, 'title': job['title'], 'total_segments': len(segments), 'has_timestamps': any(s.start is not None for s in segments)}
 
     def _write(self, job_id, state):
@@ -191,6 +216,8 @@ class StudyRunner:
             old = self.snapshot(job_id)
             if old['status'] == 'completed' and old.get('identity') == identity and not options.force:
                 return old
+            if old['status'] == 'completed':
+                atomic_json(self.jobs.root / job_id / 'analysis/learning.previous.json', old)
             state = {'status': 'queued', 'title': job['title'], 'language': options.language,
                      'model': settings.event_model, 'source_hash': digest([s.model_dump() for s in segments]),
                      'identity': identity, 'current': 0, 'total': len(windows(segments)), 'chapters': [],
@@ -200,6 +227,17 @@ class StudyRunner:
             self._write(job_id, state)
             self.queue.put((job_id, settings.model_copy(deep=True), options, segments, state))
             return dict(state)
+
+    def restore(self, job_id):
+        with self.lock:
+            if job_id in self.active:
+                raise ValueError('请先停止当前讲义整理，再恢复上一版')
+            if not self.snapshot(job_id)['previous_available']:
+                raise ValueError('没有与当前文字稿匹配的上一版讲义')
+            path = self.jobs.root / job_id / 'analysis/learning.previous.json'
+            saved = json.loads(path.read_text('utf-8'))
+            self._write(job_id, saved)
+            return self.snapshot(job_id)
 
     def cancel(self, job_id):
         self.jobs.get(job_id)
@@ -216,6 +254,13 @@ class StudyRunner:
                 continue
             try:
                 self._run(*payload)
+            except Exception:
+                # A single filesystem failure must not silently kill all future study tasks.
+                try:
+                    payload[-1].update(status='failed', error='讲义整理未完成，请检查模型服务后继续；成功分段已缓存。')
+                    self._write(payload[0], payload[-1])
+                except OSError:
+                    pass
             finally:
                 with self.lock:
                     self.active.pop(payload[0], None)

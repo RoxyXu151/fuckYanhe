@@ -88,6 +88,10 @@ class JobRunner:
             return dict(job)
 
     def retry(self, job_id, settings, *, client=None, local_path=None):
+        with self.lock:
+            return self._retry(job_id, settings, client=client, local_path=local_path)
+
+    def _retry(self, job_id, settings, *, client=None, local_path=None):
         from .models import JobRequest
         job = self.get(job_id)
         if job['status'] not in TERMINAL:

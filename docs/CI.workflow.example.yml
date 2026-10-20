@@ -17,4 +17,6 @@ jobs:
       - run: python scripts/check_publication.py
       - run: node --check src/yanhe_sentinel/web/static/app.js
       - run: node --check src/yanhe_sentinel/web/static/workspace.js
+      - run: node --check src/yanhe_sentinel/web/static/study.js
+      - run: node --check src/yanhe_sentinel/web/static/product.js
       - run: pytest -q

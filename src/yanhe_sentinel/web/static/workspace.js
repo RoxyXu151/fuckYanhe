@@ -14,6 +14,7 @@ async function loadLibrary(){
 }
 function bindJobLinks(){document.querySelectorAll('[data-job]').forEach(b=>b.onclick=()=>openJob(b.dataset.job));}
 function renderLibrary(){
+  writeRoute('library');
   if(state.savedCourse){renderSavedCourse();return;}
   const courses=state.library||[],done=courses.reduce((n,c)=>n+c.completed_sessions,0);
   const active=state.jobs.filter(j=>!terminal.has(j.status)).length;
@@ -62,7 +63,7 @@ function renderSavedCourse(){
     (`<button class="button secondary" id="refresh-saved-course">${ui.t("刷新官方课次 / 选择分析")}</button>`))+
     `<section class="panel course-notes"><label>${ui.t("课程备注")}<textarea id="course-notes" maxlength="2000" placeholder="${ui.t("记录课程安排、复核进度等")}">${esc(course.notes)}</textarea></label><button class="button secondary" id="save-course-notes">${ui.t("保存备注")}</button></section>
     <div class="table-wrap panel"><table class="library-table"><thead><tr><th>${ui.t("课次")}</th><th>${ui.t("处理状态")}</th><th>${ui.t("报告")}</th></tr></thead><tbody>${course.sessions.map(s=>`<tr><td><strong>${esc(s.title)}</strong><small>${esc(dateLabel(s.started_at))}</small></td><td>${s.status?jobBadge({status:s.status}):(`<span class="badge neutral">${ui.t("尚未处理")}</span>`)}${s.completed_job_id&&s.status!=='completed'?(`<small>${ui.t("保留有已完成版本")}</small>`):''}</td><td>${s.latest_job_id?`<button class="button secondary" data-job="${esc(s.latest_job_id)}">${['running','queued'].includes(s.status)?(ui.t("查看进度")):(ui.t("查看报告"))}</button>`:'—'}${s.latest_job_id&&state.features.study?`<button class="text-button" data-study-job="${esc(s.completed_job_id||s.latest_job_id)}">${ui.t('听课')}</button>`:''}${s.completed_job_id&&s.completed_job_id!==s.latest_job_id?`<button class="text-button" data-job="${esc(s.completed_job_id)}">${ui.t("已完成版本")}</button>`:''}</td></tr>`).join('')||(`<tr><td colspan="3">${ui.t("尚未同步课次，请连接课堂后刷新。")}</td></tr>`)}</tbody></table></div>`;
-  $('#back-library').onclick=()=>{state.savedCourse=null;renderLibrary();};
+  writeRoute('library');$('#back-library').onclick=()=>{state.savedCourse=null;renderLibrary();};
   $('#refresh-saved-course').onclick=()=>openCourse(course.id);
   $('#save-course-notes').onclick=()=>patchCourse(course.id,{notes:$('#course-notes').value});bindJobLinks();bindStudyLinks();
 }
@@ -86,7 +87,7 @@ function renderQueue(){
     (state.batchErrors?.length?`<div class="risk-note">${state.batchErrors.map(esc).join('<br>')}</div>`:'')+
     `<div class="queue-actions"><button class="button secondary" id="stop-queue" ${!active.length?'disabled':''}>${ui.t("停止全部待处理任务")}</button><button class="text-button" data-action="history">${ui.t("查看全部报告与记录")}</button></div><div class="job-list">${[...active,...incomplete].map(j=>`<section class="panel queue-card"><div><strong>${esc(j.title)}</strong>${jobBadge(j)}</div><p>${esc(stages[j.stage]||j.message)} ${j.total?esc(progressLabel(j)):''}</p><div class="row-actions"><button class="button secondary" data-job="${esc(j.id)}">${ui.t("查看")}${terminal.has(j.status)?(ui.t("报告")):(ui.t("进度"))}</button><button class="text-button" data-task-action="${esc(j.id)}">${terminal.has(j.status)?(ui.t("继续处理")):(ui.t("停止"))}</button></div></section>`).join('')||(`<div class="empty"><h3>${ui.t("目前没有待处理任务")}</h3><p>${ui.t("在课程库勾选多门课程，即可一键分析未完成课次。")}</p></div>`)}</div>`;
   bindActions();bindJobLinks();document.querySelectorAll('[data-task-action]').forEach(b=>b.onclick=async()=>{try{const job=state.jobs.find(j=>j.id===b.dataset.taskAction);const data=await api(`/api/jobs/${job.id}/${terminal.has(job.status)?'retry':'cancel'}`,{method:'POST'});state.jobs=state.jobs.map(j=>j.id===job.id?data:j);renderQueue();}catch(e){toast(e.message,true);}});
-  $('#stop-queue').onclick=async()=>{try{await Promise.all(active.map(j=>api(`/api/jobs/${j.id}/cancel`,{method:'POST'})));toast((ui.t("正在停止任务，成功缓存会保留")));}catch(e){toast(e.message,true);}};
+  if(state.features.product)enhanceQueue();$('#stop-queue').onclick=async()=>{try{await Promise.all(active.map(j=>api(`/api/jobs/${j.id}/cancel`,{method:'POST'})));toast((ui.t("正在停止任务，成功缓存会保留")));}catch(e){toast(e.message,true);}};
 }
 function renderHistoryWorkspace(){
   $('#main-content').innerHTML=heading((ui.t("报告与处理记录")),(ui.t("按课程、状态或关键词查找，历史版本会保留。")),(`<button class="button secondary" data-action="library">${ui.t("返回课程库")}</button>`))+

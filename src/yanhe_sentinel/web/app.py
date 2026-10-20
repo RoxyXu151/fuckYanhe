@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 import re
 import secrets
+import shutil
+import tempfile
 import threading
 from urllib.parse import urlsplit
 import uuid
@@ -24,6 +26,8 @@ from .jobs import JobRunner, atomic_json
 from .models import BatchRequest, JobRequest, LibraryUpdate, ModelSettings
 from .library import CourseLibrary
 from .learning import StudyRequest, StudyRunner
+from .product import (Preferences, StudyRecords, StudyProgress, BookmarkInput, NoteInput,
+                      RetrySelection, merge_settings, test_connection)
 
 
 @dataclass
@@ -50,6 +54,8 @@ def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None,
     uploads.mkdir(exist_ok=True)
     jobs = runner or JobRunner(root / 'jobs')
     study = StudyRunner(jobs)
+    records = StudyRecords(study)
+    preferences = Preferences(root)
     library = CourseLibrary(root / 'library.json')
     login = login_manager or BrowserLogin(client_factory=client_factory)
     sessions, lock = {}, threading.RLock()
@@ -89,7 +95,7 @@ def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None,
                 sid = secrets.token_urlsafe(24)
                 request.session['sid'] = sid
                 request.session['csrf'] = secrets.token_urlsafe(24)
-                sessions[sid] = Session()
+                sessions[sid] = Session(settings=preferences.load())
             if mutation and not secrets.compare_digest(request.headers.get('x-csrf-token', ''), request.session['csrf']):
                 raise PortalError('页面会话已更新，请刷新后再试。', 'csrf', 403)
             return sessions[sid]
@@ -130,8 +136,34 @@ def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None,
         session = session_for(request)
         return {'csrf': request.session['csrf'], 'auth': {
             'connected': bool(session.portal), 'display_name': (session.user or {}).get('display_name', ''),
-            **session.login_status}, 'settings': session.settings.public(), 'jobs': jobs.list(),
-            'library': library.snapshot(jobs.list()), 'features': {'study': True}}
+            **session.login_status}, 'settings': {**session.settings.public(), 'defaults_saved': preferences.file.exists()}, 'jobs': jobs.list(),
+            'library': library.snapshot(jobs.list()), 'study_tasks': study.list_status(),
+            'features': {'study': True, 'product': True}}
+
+    @app.get('/api/study-tasks')
+    def study_tasks(request: Request):
+        session_for(request)
+        return {'items': study.list_status()}
+
+    @app.get('/api/health')
+    def health(request: Request):
+        session_for(request)
+        from .. import __version__
+        from ..media_tools import ffmpeg_executable
+        try:
+            ffmpeg_executable()
+            media_ready = True
+        except (OSError, MediaError, ImportError):
+            media_ready = False
+        try:
+            with tempfile.TemporaryFile(dir=root):
+                pass
+            storage_ready = True
+            free_bytes = shutil.disk_usage(root).free
+        except OSError:
+            storage_ready, free_bytes = False, None
+        return {'version': __version__, 'media_ready': media_ready, 'storage_ready': storage_ready,
+                'free_bytes': free_bytes, 'active_jobs': sum(j['status'] in ('queued', 'running') for j in jobs.list())}
 
     @app.post('/api/auth/browser')
     def browser_login(request: Request):
@@ -169,21 +201,20 @@ def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None,
     @app.put('/api/settings')
     def save_settings(body: dict, request: Request):
         session = session_for(request, True)
-        allowed = set(ModelSettings.model_fields)
-        if set(body) - allowed:
-            raise ValueError('设置中包含未知字段')
-        values = session.settings.model_dump()
-        # Never forward an old service's secret to a newly selected endpoint.
-        for kind in ('asr', 'event', 'vision'):
-            identity = [kind + '_base_url', kind + '_provider', kind + '_deployment']
-            if any(key in body and body[key] != values.get(key) for key in identity):
-                values[kind + '_api_key'] = ''
-        for key, value in body.items():
-            if key.endswith('_api_key') and value == '':
-                continue  # Empty password fields retain existing in-memory keys.
-            values[key] = value
-        session.settings = ModelSettings.model_validate(values)
-        return session.settings.public()
+        remember = body.pop('remember_defaults', None)
+        if remember is not None and not isinstance(remember, bool):
+            raise ValueError('保存偏好参数无效')
+        updated = merge_settings(session.settings, body)
+        if remember is not None:
+            preferences.save(updated, remember)
+        session.settings = updated
+        return {**session.settings.public(), 'defaults_saved': preferences.file.exists()}
+
+    @app.post('/api/settings/check/{kind}')
+    def check_settings(kind: str, body: dict, request: Request):
+        session = session_for(request, True)
+        body.pop('remember_defaults', None)
+        return test_connection(merge_settings(session.settings, body), kind)
 
     @app.delete('/api/settings/secrets')
     def clear_secrets(request: Request):
@@ -339,6 +370,24 @@ def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None,
                 pass
         return jobs.retry(job_id, session.settings, client=session.portal if job['source'] == 'yanhe' else None, local_path=local)
 
+    @app.post('/api/jobs/retry-many')
+    def retry_many(body: RetrySelection, request: Request):
+        session = session_for(request, True)
+        result = {'jobs': [], 'skipped': [], 'errors': []}
+        for job_id in dict.fromkeys(body.job_ids):
+            try:
+                job = jobs.get(job_id)
+                if job['status'] in ('running', 'queued', 'completed'):
+                    result['skipped'].append(job_id)
+                    continue
+                if job['source'] == 'yanhe' and not session.portal:
+                    result['errors'].append({'id': job_id, 'reason': 'login'})
+                    continue
+                result['jobs'].append(retry(job_id, request))
+            except (ValueError, PortalError, MediaError):
+                result['errors'].append({'id': job_id, 'reason': 'settings_or_source'})
+        return result
+
     def file_url(job_id, value):
         if not value:
             return None
@@ -406,6 +455,36 @@ def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None,
         session_for(request, True)
         return study.cancel(job_id)
 
+    @app.post('/api/jobs/{job_id}/learning/restore')
+    def restore_learning(job_id: str, request: Request):
+        session_for(request, True)
+        return study.restore(job_id)
+
+    @app.get('/api/jobs/{job_id}/study-records')
+    def study_records(job_id: str, request: Request):
+        session_for(request)
+        return records.read(job_id)
+
+    @app.put('/api/jobs/{job_id}/study-progress')
+    def study_progress(job_id: str, body: StudyProgress, request: Request):
+        session_for(request, True)
+        return records.update(job_id, **body.model_dump())
+
+    @app.put('/api/jobs/{job_id}/study-note')
+    def study_note(job_id: str, body: NoteInput, request: Request):
+        session_for(request, True)
+        return records.update(job_id, note=body.text)
+
+    @app.post('/api/jobs/{job_id}/bookmarks')
+    def add_bookmark(job_id: str, body: BookmarkInput, request: Request):
+        session_for(request, True)
+        return records.bookmark(job_id, body)
+
+    @app.delete('/api/jobs/{job_id}/bookmarks/{bookmark_id}')
+    def remove_bookmark(job_id: str, bookmark_id: str, request: Request):
+        session_for(request, True)
+        return records.remove(job_id, bookmark_id)
+
     @app.put('/api/jobs/{job_id}/reviews/{event_id}')
     def review(job_id: str, event_id: str, body: ReviewInput, request: Request):
         session_for(request, True)
@@ -430,7 +509,7 @@ def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None,
             raise PortalError('文件不可访问。', 'file', 403)
         if not path.is_file() or path.suffix.lower() not in ('.mp4', '.mkv', '.mov', '.webm', '.mp3', '.wav', '.aac', '.m4a', '.flac', '.ogg', '.srt', '.vtt', '.txt', '.md', '.json', '.jpg', '.png'):
             raise PortalError('文件不存在或不能通过工作台访问。', 'file', 404)
-        if path.name in ('job.json', 'reviews.json'):
+        if path.name in ('job.json', 'reviews.json', 'study-records.json'):
             raise PortalError('此文件不作为报告附件提供。', 'file', 403)
         return FileResponse(path)
 

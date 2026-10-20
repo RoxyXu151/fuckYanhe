@@ -3,12 +3,14 @@
 const studyState={jobId:null,data:null,transcript:null,chapter:null,mode:'notes',query:'',offset:0,language:'zh-CN',request:0,generating:false};
 function bindStudyLinks(){document.querySelectorAll('[data-study-job]').forEach(button=>button.onclick=()=>openStudy(button.dataset.studyJob));}
 async function openStudy(id){
+  saveStudyProgress(true);const opening=++productState.studyOpenRequest;
   try{const data=await api(`/api/jobs/${encodeURIComponent(id)}/learning`);
-    Object.assign(studyState,{jobId:id,data,transcript:null,chapter:null,mode:'notes',query:'',offset:0,language:data.model?data.language:ui.language});
-    showView('study');await loadStudyTranscript();
+    if(opening!==productState.studyOpenRequest)return;Object.assign(studyState,{jobId:id,data,transcript:null,chapter:null,mode:'notes',query:'',offset:0,language:data.model?data.language:ui.language});
+    productState.playbackTouchedJob=null;showView('study');await Promise.all([loadStudyTranscript(),loadStudyRecords(id)]);
   }catch(error){toast(error.message,true);}
 }
 function renderStudy(){
+  writeRoute('study');
   if(!studyState.jobId){
     const available=state.jobs.filter(job=>terminal.has(job.status));
     $('#main-content').innerHTML=heading(ui.t('听课'),ui.t('用已有文字稿复习：搜索原文、跳转录播、整理章节与讲义。'))+
@@ -23,16 +25,16 @@ function renderStudy(){
     <section class="study-main">${d.video?`<div class="study-player"><video id="study-player" controls preload="metadata" src="${esc(d.video)}"></video><label>${ui.t('播放速度')}<select id="study-speed"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label></div>`:`<p class="inline-notice">${ui.t(d.has_timestamps?'此文字稿未关联可播放录播，仍可按时间阅读。':'此文字稿没有时间戳，章节和引用按字幕编号定位。')}</p>`}
     <section class="panel study-generation"><div id="study-status" role="status" aria-live="polite"></div></section>
     <div class="study-tabs"><button class="tab" id="study-notes-tab">${ui.t('讲义与知识点')}</button><button class="tab" id="study-transcript-tab">${ui.t('原始文字稿')}</button><button class="text-button" id="study-report">${ui.t('查看通知报告')}</button></div>
-    <div id="study-notes"></div><section id="study-transcript" class="panel"><div class="study-search"><label for="study-query">${ui.t('搜索文字稿')}</label><input id="study-query" placeholder="${ui.t('输入原文关键词')}" value="${esc(studyState.query)}"><button class="button secondary" id="study-search-button">${ui.t('搜索')}</button></div><div id="study-transcript-rows"></div></section>
+    <section class="panel" id="study-personal"></section><div id="study-notes"></div><section id="study-transcript" class="panel"><div class="study-search"><label for="study-query">${ui.t('搜索文字稿')}</label><input id="study-query" placeholder="${ui.t('输入原文关键词')}" value="${esc(studyState.query)}"><button class="button secondary" id="study-search-button">${ui.t('搜索')}</button></div><div id="study-transcript-rows"></div></section>
     </section></div>`;
-  $('#study-back').onclick=()=>{studyState.jobId=null;studyState.data=null;renderStudy();};
+  $('#study-back').onclick=()=>{saveStudyProgress(true);productState.studyOpenRequest++;studyState.jobId=null;studyState.data=null;renderStudy();};
   $('#study-notes-tab').onclick=()=>{studyState.mode='notes';renderStudyContent();};
   $('#study-transcript-tab').onclick=()=>{studyState.mode='transcript';renderStudyContent();};
   $('#study-report').onclick=()=>openJob(studyState.jobId);
   $('#study-search-button').onclick=()=>{studyState.query=$('#study-query').value;studyState.offset=0;studyState.mode='transcript';loadStudyTranscript();};
   $('#study-query').onkeydown=event=>{if(event.key==='Enter')$('#study-search-button').click();};
-  const player=$('#study-player');if(player){$('#study-speed').onchange=()=>player.playbackRate=Number($('#study-speed').value);player.ontimeupdate=updateStudyPlayback;}
-  renderStudyStatus();renderStudyContent();
+  const player=$('#study-player');if(player){$('#study-speed').onchange=()=>player.playbackRate=Number($('#study-speed').value);player.ontimeupdate=()=>{updateStudyPlayback();if(!player.paused)saveStudyProgress();};player.onplay=()=>productState.playbackTouchedJob=studyState.jobId;player.onseeked=()=>{productState.playbackTouchedJob=studyState.jobId;saveStudyProgress(true);};player.onpause=()=>saveStudyProgress(true);player.onratechange=()=>saveStudyProgress(true);}
+  renderStudyStatus();renderStudyContent();renderStudyRecords();
 }
 function renderStudyStatus(){
   const target=$('#study-status');if(!target)return;
@@ -47,15 +49,16 @@ function renderStudyStatus(){
     <small>${ui.t('仅点击生成才会调用模型；线上服务可能计费。停止会在当前请求结束后生效。')}</small>`;
   $('#study-language').value=studyState.language;$('#study-language').onchange=e=>studyState.language=e.target.value;
   $('#study-generate').onclick=generateStudy;
+  if(d.previous_available&&!busy)target.insertAdjacentHTML('beforeend',`<button class="text-button" id="study-restore">${ui.t('恢复上一版完整讲义')}</button>`);if($('#study-restore'))$('#study-restore').onclick=async()=>{try{const id=studyState.jobId;await api(`/api/jobs/${id}/learning/restore`,{method:'POST'});const data=await api(`/api/jobs/${id}/learning`);if(studyState.jobId!==id||state.view!=='study')return;saveStudyProgress(true);studyState.data=data;renderStudy();}catch(error){toast(error.message,true);}};
   if($('#study-stop'))$('#study-stop').onclick=async()=>{try{await api(`/api/jobs/${studyState.jobId}/learning/cancel`,{method:'POST'});toast(ui.t('已请求停止，当前请求结束后保留已成功分段。'));}catch(e){toast(e.message,true);}};
 }
 async function generateStudy(){
   if(studyState.generating)return;
   if(!configured(true)){openSettings();toast(ui.t('请先配置事项分析模型'));return;}
-  studyState.generating=true;renderStudyStatus();
-  try{const response=await api(`/api/jobs/${studyState.jobId}/learning`,{method:'POST',body:{language:studyState.language,force:studyState.data.status==='completed'}});
-    studyState.data={...studyState.data,...response};studyState.chapter=null;studyState.offset=0;renderStudyContent();
-  }catch(error){toast(error.message,true);}finally{studyState.generating=false;renderStudyStatus();}
+  const id=studyState.jobId;studyState.generating=true;renderStudyStatus();
+  try{const response=await api(`/api/jobs/${id}/learning`,{method:'POST',body:{language:studyState.language,force:studyState.data.status==='completed'}});
+    if(studyState.jobId!==id||state.view!=='study')return;studyState.data={...studyState.data,...response};studyState.chapter=null;studyState.offset=0;renderStudyContent();
+  }catch(error){toast(error.message,true);}finally{studyState.generating=false;if(studyState.jobId===id&&state.view==='study')renderStudyStatus();}
 }
 async function refreshStudy(){
   if(!studyState.jobId||!['queued','running'].includes(studyState.data?.status))return;
@@ -77,7 +80,7 @@ function renderStudyContent(){
   });
   const selected=studyState.chapter===null?chapters:chapters.filter((_,index)=>index===studyState.chapter);
   $('#study-notes').innerHTML=selected.map(chapter=>`<article class="panel study-note"><h2>${esc(chapter.title)}</h2><p class="study-summary">${esc(chapter.summary)}</p>
-    ${chapter.points.map(point=>`<section class="study-point"><p>${esc(point.text)}</p><details><summary>${ui.t('查看原文依据')}</summary>${point.sources.map(source=>`<blockquote><button class="text-button" data-study-seek="${source.start??''}" ${source.start==null?'disabled':''}>${timestamp(source.start)} · #${source.id}</button><p>${esc(source.text)}</p></blockquote>`).join('')}</details></section>`).join('')}</article>`).join('')||`<div class="panel empty"><h3>${ui.t('先阅读文字稿，或生成一份讲义')}</h3><p>${ui.t('章节标题和知识点由模型整理，原文依据保持不变。')}</p><button class="button secondary" id="study-read-transcript">${ui.t('阅读文字稿')}</button></div>`;
+    ${chapter.points.map(point=>`<section class="study-point"><span class="ai-label">${ui.t('AI 概括 · 需核对')}</span><p>${esc(point.text)}</p><details><summary>${ui.t('查看原文依据')}</summary>${point.sources.map(source=>`<blockquote><button class="text-button" data-study-seek="${source.start??''}" ${source.start==null?'disabled':''}>${timestamp(source.start)} · #${source.id}</button><p>${esc(source.text)}</p></blockquote>`).join('')}</details></section>`).join('')}</article>`).join('')||`<div class="panel empty"><h3>${ui.t('先阅读文字稿，或生成一份讲义')}</h3><p>${ui.t('章节标题和知识点由模型整理，原文依据保持不变。')}</p><button class="button secondary" id="study-read-transcript">${ui.t('阅读文字稿')}</button></div>`;
   if($('#study-read-transcript'))$('#study-read-transcript').onclick=()=>{studyState.mode='transcript';renderStudyContent();};
   $('#study-notes').hidden=studyState.mode!=='notes';$('#study-transcript').hidden=studyState.mode!=='transcript';
   $('#study-notes-tab').classList.toggle('active',studyState.mode==='notes');$('#study-transcript-tab').classList.toggle('active',studyState.mode==='transcript');
@@ -86,7 +89,7 @@ function renderStudyContent(){
 function seekStudy(seconds){
   if(seconds==null||seconds==='')return;
   const player=$('#study-player');if(!player)return;
-  player.currentTime=Number(seconds);player.play().catch(()=>{});
+  productState.playbackTouchedJob=studyState.jobId;player.currentTime=Number(seconds);player.play().catch(()=>{});
 }
 function bindStudySeek(){document.querySelectorAll('[data-study-seek]').forEach(button=>button.onclick=()=>seekStudy(button.dataset.studySeek));}
 async function loadStudyTranscript(){
@@ -103,11 +106,11 @@ function renderStudyTranscript(){
   const target=$('#study-transcript-rows');if(!target)return;
   const data=studyState.transcript;if(!data){target.innerHTML=`<p>${ui.t('正在读取文字稿…')}</p>`;return;}
   target.innerHTML=`<p class="study-result-count">${data.total} ${ui.t('段字幕')} · ${ui.t('仅显示当前章节与搜索结果')}</p>`+
-    data.items.map(segment=>`<div class="transcript-row" data-segment-start="${segment.start??''}" data-segment-end="${segment.end??''}"><button class="text-button" data-study-seek="${segment.start??''}" ${segment.start==null?'disabled':''}>${timestamp(segment.start)} <small>#${segment.id}</small></button><p>${esc(segment.text)}</p></div>`).join('')+
+    data.items.map(segment=>`<div class="transcript-row" data-segment-start="${segment.start??''}" data-segment-end="${segment.end??''}"><button class="text-button" data-study-seek="${segment.start??''}" ${segment.start==null?'disabled':''}>${timestamp(segment.start)} <small>#${segment.id}</small></button><div><p>${esc(segment.text)}</p>${state.features.product?`<button class="text-button" data-bookmark-segment="${segment.id}">${ui.t('收藏原文')}</button>`:''}</div></div>`).join('')+
     (!data.items.length?`<p class="empty">${ui.t('没有符合条件的文字稿片段')}</p>`:'')+
     `<div class="pagination"><button class="button secondary" id="study-prev" ${data.offset<=0?'disabled':''}>${ui.t('← 上一页')}</button><span>${Math.floor(data.offset/data.limit)+1} / ${Math.max(1,Math.ceil(data.total/data.limit))}</span><button class="button secondary" id="study-next" ${data.offset+data.limit>=data.total?'disabled':''}>${ui.t('下一页 →')}</button></div>`;
   $('#study-prev').onclick=()=>{studyState.offset=Math.max(0,studyState.offset-data.limit);loadStudyTranscript();};
-  $('#study-next').onclick=()=>{studyState.offset+=data.limit;loadStudyTranscript();};bindStudySeek();updateStudyPlayback();
+  $('#study-next').onclick=()=>{studyState.offset+=data.limit;loadStudyTranscript();};bindStudySeek();document.querySelectorAll('[data-bookmark-segment]').forEach(button=>button.onclick=()=>addStudyBookmark({segment_id:Number(button.dataset.bookmarkSegment)}));updateStudyPlayback();
 }
 function updateStudyPlayback(){
   const player=$('#study-player');if(!player)return;
