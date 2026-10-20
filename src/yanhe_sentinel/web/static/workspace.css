@@ -1,0 +1,30 @@
+/* Practical workspace: readable type, dense tables, clear actions and focus. */
+:root{--ink:#20352d;--muted:#51645a;--line:#d8e0da;--primary:#245d47}
+body{color:var(--ink);background:#f3f5f4;font-size:14px}
+main{max-width:1600px;margin:0 auto;padding:30px 34px}
+p,.option-hint,.page-heading p,.job-info p,.course-card p,.footer{color:#53665d}
+.eyebrow,.sidebar-note,.radar-art,.feature-grid,.steps{display:none}
+.page-heading h1{font-size:27px}.page-heading p{font-size:14px;line-height:1.7}
+.panel{background:#fff;border-color:var(--line);box-shadow:none;border-radius:9px}
+.button{min-height:38px;font-size:13px;border-radius:6px}.text-button{font-size:13px;color:#245d47}
+input,select,textarea{font:inherit;min-height:38px;border:1px solid #b9c8be;border-radius:6px;background:white;padding:8px 10px;color:#20352d}
+input[type=checkbox]{min-height:0;width:17px;height:17px;accent-color:#245d47;cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #367fbb;outline-offset:3px}
+.sidebar{background:#fff}.sidebar nav{margin-top:24px}.nav-item{font-size:14px;min-height:44px}.nav-caption{font-size:12px;color:#52665a}.sidebar-bottom{font-size:12px}
+.topbar{background:#fff;border-bottom:1px solid var(--line)}.privacy-pill{font-size:12px;color:#52665a}
+.workspace-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:20px 0}
+.workspace-stats section{background:white;border:1px solid var(--line);border-radius:8px;padding:18px;display:flex;align-items:baseline;gap:13px}
+.workspace-stats strong{font-size:27px;color:#245d47}.workspace-stats span{font-size:13px;color:#53665d}
+.inline-notice{padding:12px 15px;background:#edf3f0;border:1px solid #ccdad2;border-radius:6px;font-size:13px;line-height:1.7}
+.toolbar{gap:14px;align-items:flex-end;margin:20px 0}.toolbar label{font-size:13px;display:block}.toolbar label input,.toolbar label select{display:block;margin-top:6px;width:100%}.search-field{flex:1;min-width:160px}
+.batch-bar{display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:14px;margin:14px 0;position:sticky;top:0;z-index:2;box-shadow:0 2px 8px #20352d10}
+.checkbox-label{font-size:13px;color:#334b3d}.batch-bar .checkbox-label{margin:0}.batch-bar .button{margin-left:auto}.option-hint{font-size:12px;line-height:1.8}
+.table-wrap{overflow:auto;margin:18px 0}.library-table{width:100%;border-collapse:collapse;text-align:left;min-width:620px}
+.library-table th{background:#f2f5f3;font-size:12px;font-weight:600;color:#52665a;padding:13px 16px;white-space:nowrap}
+.library-table td{padding:16px;border-top:1px solid #e4eae6;font-size:13px;vertical-align:middle}.library-table td strong{font-size:14px}.library-table small{display:block;color:#5e7066;font-size:12px;margin-top:6px;line-height:1.6}
+.row-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px}.row-actions .button{white-space:nowrap}.course-notes{padding:18px}.course-notes label{display:block}.course-notes textarea{width:100%;min-height:80px;display:block;margin:8px 0 12px;resize:vertical}
+.queue-actions{display:flex;gap:16px;align-items:center;margin:18px 0}.queue-card{padding:20px}.queue-card>div:first-child{display:flex;justify-content:space-between;gap:16px}.queue-card p{font-size:13px;margin:12px 0}
+.job-card{padding:18px;border-radius:8px}.job-info h3{font-size:15px}.job-info p{font-size:12px;line-height:1.7}.badge{font-size:12px;padding:5px 9px}.event-card h3{font-size:17px}.event-card blockquote,.event-source,.event-action{font-size:14px;line-height:1.8}.summary-line{font-size:13px}.quality-details,.quality-details ul{font-size:13px;line-height:1.8}.event-bottom .text-button,.review-label{font-size:12px}
+.welcome{grid-template-columns:1fr;min-height:0}.welcome h2{font-size:24px}.welcome p,.below-note{font-size:14px}.settings-fields p,.settings-fields label,.settings-fields small{font-size:12px}.dialog-heading p{font-size:13px}
+@media(max-width:760px){main{padding:20px 15px}.sidebar{padding:14px 15px}.sidebar nav{overflow-x:auto;flex-wrap:nowrap;justify-content:flex-start;gap:4px;padding-bottom:4px;margin-top:16px}.nav-item{white-space:nowrap;font-size:12px;padding:9px 10px;flex-shrink:0}.workspace-stats{gap:7px}.workspace-stats section{display:block;padding:13px}.workspace-stats strong{font-size:23px;display:block}.workspace-stats span{font-size:11px}.toolbar{flex-direction:column;align-items:stretch}.batch-bar{gap:10px;position:static}.batch-bar .button{width:100%;margin-left:0}.queue-actions{flex-wrap:wrap}.library-table{min-width:580px}.page-heading h1{font-size:24px}.report-side{display:flex;flex-direction:column}.summary-card{order:-1}.event-card{padding:19px}.event-card h3{font-size:16px}}
+@media(max-width:760px){.nav-item{width:auto;min-width:0;flex:0 0 auto}.library-table{display:block;min-width:0}.library-table thead{display:none}.library-table tbody,.library-table tr,.library-table td{display:block}.library-table tr{padding:12px 0;border-bottom:1px solid #d8e0da}.library-table td{padding:7px 14px;border:0}.library-table tbody tr:last-child{border-bottom:0}#library-results .library-table tr{display:grid;grid-template-columns:32px minmax(0,1fr)}#library-results .library-table td:first-child{grid-column:1;grid-row:1/5;padding-right:0}#library-results .library-table td:not(:first-child){grid-column:2}.row-actions{gap:12px}.library-table td strong{font-size:15px}}

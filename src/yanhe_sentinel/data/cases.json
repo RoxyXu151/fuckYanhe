@@ -1,0 +1,332 @@
+[
+  {
+    "text": "请大家扫描二维码签到。",
+    "events": [
+      {
+        "type": "attendance",
+        "polarity": "affirmed",
+        "tense": "current",
+        "status": "actionable",
+        "summary": "请大家扫描二维码签到。",
+        "action": "请大家扫描二维码签到。",
+        "due_text": null
+      }
+    ]
+  },
+  {
+    "text": "第三章习题下周五前交到平台上。",
+    "events": [
+      {
+        "type": "homework",
+        "polarity": "affirmed",
+        "tense": "future",
+        "status": "actionable",
+        "summary": "第三章习题下周五前交到平台上。",
+        "action": "第三章习题下周五前交到平台上。",
+        "due_text": "下周五前"
+      }
+    ]
+  },
+  {
+    "text": "周四有个小测试。",
+    "events": [
+      {
+        "type": "exam",
+        "polarity": "affirmed",
+        "tense": "future",
+        "status": "actionable",
+        "summary": "周四有个小测试。",
+        "action": "周四有个小测试。",
+        "due_text": null
+      }
+    ]
+  },
+  {
+    "text": "下节课带电脑。",
+    "events": [
+      {
+        "type": "in_class_task",
+        "polarity": "affirmed",
+        "tense": "future",
+        "status": "actionable",
+        "summary": "下节课带电脑。",
+        "action": "下节课带电脑。",
+        "due_text": null
+      }
+    ]
+  },
+  {
+    "text": "今天不点名。",
+    "events": [
+      {
+        "type": "attendance",
+        "polarity": "negated",
+        "tense": "current",
+        "status": "informational",
+        "summary": "今天不点名。",
+        "action": null,
+        "due_text": null
+      }
+    ]
+  },
+  {
+    "text": "我们上周点过名了。",
+    "events": [
+      {
+        "type": "attendance",
+        "polarity": "affirmed",
+        "tense": "past",
+        "status": "informational",
+        "summary": "我们上周点过名了。",
+        "action": null,
+        "due_text": null
+      }
+    ]
+  },
+  {
+    "text": "上周作业已经交过了。",
+    "events": [
+      {
+        "type": "homework",
+        "polarity": "affirmed",
+        "tense": "past",
+        "status": "informational",
+        "summary": "上周作业已经交过了。",
+        "action": null,
+        "due_text": null
+      }
+    ]
+  },
+  {
+    "text": "假如下周考试，大家会怎么办？",
+    "events": [
+      {
+        "type": "exam",
+        "polarity": "uncertain",
+        "tense": "future",
+        "status": "needs_review",
+        "summary": "假如下周考试，大家会怎么办？",
+        "action": null,
+        "due_text": null
+      }
+    ]
+  },
+  {
+    "text": "之前说要测验，现在取消。",
+    "events": [
+      {
+        "type": "exam",
+        "polarity": "negated",
+        "tense": "current",
+        "status": "canceled",
+        "summary": "之前说要测验，现在取消。",
+        "action": null,
+        "due_text": null
+      }
+    ]
+  },
+  {
+    "text": "考试可能在下周，最终看通知。",
+    "events": [
+      {
+        "type": "exam",
+        "polarity": "uncertain",
+        "tense": "future",
+        "status": "needs_review",
+        "summary": "考试可能在下周，最终看通知。",
+        "action": null,
+        "due_text": null
+      }
+    ]
+  },
+  {
+    "text": "作业从周三改到周五。",
+    "events": [
+      {
+        "type": "homework",
+        "polarity": "affirmed",
+        "tense": "future",
+        "status": "actionable",
+        "summary": "作业从周三改到周五。",
+        "action": "作业从周三改到周五。",
+        "due_text": "周五"
+      }
+    ]
+  },
+  {
+    "text": "考试地点从 A 换到 B。",
+    "events": [
+      {
+        "type": "exam",
+        "polarity": "affirmed",
+        "tense": "future",
+        "status": "actionable",
+        "summary": "考试地点从 A 换到 B。",
+        "action": "考试地点从 A 换到 B。",
+        "due_text": null
+      }
+    ]
+  },
+  {
+    "text": "上次考试的分数已经公布。",
+    "events": [
+      {
+        "type": "grading",
+        "polarity": "affirmed",
+        "tense": "past",
+        "status": "informational",
+        "summary": "上次考试的分数已经公布。",
+        "action": null,
+        "due_text": null
+      }
+    ]
+  },
+  {
+    "text": "下次每个人带打印好的报告。",
+    "events": [
+      {
+        "type": "in_class_task",
+        "polarity": "affirmed",
+        "tense": "future",
+        "status": "actionable",
+        "summary": "下次每个人带打印好的报告。",
+        "action": "下次每个人带打印好的报告。",
+        "due_text": null
+      }
+    ]
+  },
+  {
+    "text": "第三题留给大家自己做。",
+    "events": [
+      {
+        "type": "homework",
+        "polarity": "affirmed",
+        "tense": "future",
+        "status": "actionable",
+        "summary": "第三题留给大家自己做。",
+        "action": "第三题留给大家自己做。",
+        "due_text": null
+      }
+    ]
+  },
+  {
+    "text": "PPT 上写着交作业，但这次不需要交。",
+    "events": [
+      {
+        "type": "homework",
+        "polarity": "negated",
+        "tense": "current",
+        "status": "canceled",
+        "summary": "PPT 上写着交作业，但这次不需要交。",
+        "action": null,
+        "due_text": null
+      }
+    ]
+  },
+  {
+    "text": "课堂上答完这几题才能走。",
+    "events": [
+      {
+        "type": "in_class_task",
+        "polarity": "affirmed",
+        "tense": "current",
+        "status": "actionable",
+        "summary": "课堂上答完这几题才能走。",
+        "action": "课堂上答完这几题才能走。",
+        "due_text": null
+      }
+    ]
+  },
+  {
+    "text": "下周停课。",
+    "events": [
+      {
+        "type": "schedule",
+        "polarity": "affirmed",
+        "tense": "future",
+        "status": "actionable",
+        "summary": "下周停课。",
+        "action": "下周停课。",
+        "due_text": null
+      }
+    ]
+  },
+  {
+    "text": "平时分占总成绩百分之三十。",
+    "events": [
+      {
+        "type": "grading",
+        "polarity": "affirmed",
+        "tense": "current",
+        "status": "informational",
+        "summary": "平时分占总成绩百分之三十。",
+        "action": null,
+        "due_text": null
+      }
+    ]
+  },
+  {
+    "text": "请下载平台上的必读材料。",
+    "events": [
+      {
+        "type": "resource",
+        "polarity": "affirmed",
+        "tense": "current",
+        "status": "actionable",
+        "summary": "请下载平台上的必读材料。",
+        "action": "请下载平台上的必读材料。",
+        "due_text": null
+      }
+    ]
+  },
+  {
+    "text": "请在课后确认个人信息。",
+    "events": [
+      {
+        "type": "other_action",
+        "polarity": "affirmed",
+        "tense": "future",
+        "status": "actionable",
+        "summary": "请在课后确认个人信息。",
+        "action": "请在课后确认个人信息。",
+        "due_text": null
+      }
+    ]
+  },
+  {
+    "text": "签到已截止。",
+    "events": [
+      {
+        "type": "attendance",
+        "polarity": "affirmed",
+        "tense": "past",
+        "status": "informational",
+        "summary": "签到已截止。",
+        "action": null,
+        "due_text": null
+      }
+    ]
+  },
+  {
+    "text": "先打开签到码，等一下再扫。",
+    "events": [
+      {
+        "type": "attendance",
+        "polarity": "affirmed",
+        "tense": "future",
+        "status": "actionable",
+        "summary": "先打开签到码，等一下再扫。",
+        "action": "先打开签到码，等一下再扫。",
+        "due_text": null
+      }
+    ]
+  },
+  {
+    "text": "这是一道考试风格的例题。",
+    "events": []
+  },
+  {
+    "text": "今天介绍矩阵的乘法。",
+    "events": []
+  }
+]
