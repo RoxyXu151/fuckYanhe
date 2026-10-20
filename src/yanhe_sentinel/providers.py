@@ -81,7 +81,7 @@ class OpenAICompatibleProvider:
         self.model = model if model is not None else os.environ.get('YANHE_MODEL', '')
         self.qwen_thinking = os.environ.get('YANHE_QWEN_THINKING') == '1'
         url = urlsplit(self.base)
-        if not self.key or not self.model or not self.base:
+        if (not self.key and os.environ.get('YANHE_ALLOW_NO_KEY') != '1') or not self.model or not self.base:
             raise ProviderError('请设置 YANHE_API_KEY、YANHE_BASE_URL、YANHE_MODEL')
         if url.username or url.password or url.query or url.fragment or not url.hostname:
             raise ProviderError('模型地址不能包含凭据、查询参数或片段')
@@ -145,7 +145,7 @@ class OpenAICompatibleProvider:
             try:
                 with httpx.Client(timeout=180, follow_redirects=False) as client:
                     response = client.post(self.base + '/chat/completions', json=payload,
-                                           headers={'Authorization': 'Bearer ' + self.key})
+                                           headers={'Authorization': 'Bearer ' + self.key} if self.key else {})
                 response.raise_for_status()
                 choice = response.json()['choices'][0]
                 if choice.get('finish_reason') in ('length', 'content_filter'):

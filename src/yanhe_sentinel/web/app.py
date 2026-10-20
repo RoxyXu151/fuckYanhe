@@ -169,6 +169,11 @@ def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None,
         if set(body) - allowed:
             raise ValueError('设置中包含未知字段')
         values = session.settings.model_dump()
+        # Never forward an old service's secret to a newly selected endpoint.
+        for kind in ('asr', 'event', 'vision'):
+            identity = [kind + '_base_url', kind + '_provider', kind + '_deployment']
+            if any(key in body and body[key] != values.get(key) for key in identity):
+                values[kind + '_api_key'] = ''
         for key, value in body.items():
             if key.endswith('_api_key') and value == '':
                 continue  # Empty password fields retain existing in-memory keys.

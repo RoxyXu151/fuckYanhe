@@ -24,6 +24,8 @@ if (-not (Get-NetTCPConnection -LocalPort 18765 -State Listen -ErrorAction Silen
         '-L', "127.0.0.1:18766:127.0.0.1:$EventRemotePort", $SshHost) -WindowStyle Hidden -PassThru
     $tunnel.Id | Set-Content -LiteralPath (Join-Path $stateRoot 'tunnel.pid')
 }
+$env:YANHE_ASR_DEPLOYMENT = 'self-hosted'
+$env:YANHE_EVENT_DEPLOYMENT = 'self-hosted'
 $env:YANHE_ASR_PROVIDER = 'openai-compatible'
 $env:YANHE_ASR_BASE_URL = 'http://127.0.0.1:18765/v1'
 $env:YANHE_ASR_MODEL = 'Qwen3-ASR-1.7B+ForcedAligner-0.6B'

@@ -1,0 +1,29 @@
+/* Semantic colors shared by every workspace view, dialog and form. */
+:root{--surface:#fff;--surface-alt:#f2f5f3;--page:#f3f5f4;--text:#20352d;--secondary:#53665d;--border:#d8e0da;--accent:#245d47;--accent-soft:#e7f0ea;--notice:#edf3f0;--warning:#fff4d8;--warning-text:#795c18;--error-bg:#fbe9e5;--error-text:#963e32}
+:root[data-theme=dark]{--surface:#1c252b;--surface-alt:#242f36;--page:#12191f;--text:#e4ece8;--secondary:#afc1b8;--border:#3d4c51;--accent:#92d9b3;--accent-soft:#294b3d;--notice:#20392f;--warning:#40351f;--warning-text:#efce89;--error-bg:#442b2b;--error-text:#f3b5a8;--ink:var(--text);--body:var(--secondary);--muted:var(--secondary);--line:var(--border);--paper:var(--page);--white:var(--surface);--green:var(--accent);--green-soft:var(--accent-soft)}
+html,body{background:var(--page);color:var(--text)}
+.topbar-actions{gap:9px;flex-wrap:wrap}.topbar-actions select{font-size:12px;min-height:34px;padding:5px 8px;max-width:125px}.topbar-actions .privacy-pill{display:none}
+.deployment-help{padding:10px 12px;background:var(--notice);border-radius:6px;line-height:1.7}
+:root[data-theme=dark] :is(.sidebar,.topbar,.account-card,.panel,.feature,.course-card,.job-card,.steps,.art-label,.icon-button,.secondary,.event-card,.workspace-stats section,dialog){background:var(--surface);border-color:var(--border);color:var(--text)}
+:root[data-theme=dark] :is(input,select,textarea){background:var(--page);border-color:var(--border);color:var(--text)}
+:root[data-theme=dark] :is(p,small,label,.option-hint,.page-heading p,.footer,.nav-item,.nav-caption,.sidebar-bottom,.privacy-pill,.job-info p,.summary-line,.summary-line strong,.event-action,.video-caption,.source-caption,.review-label,.quality-details,.quality-details ul,.settings-fields small,.settings-fields label,.vision-settings,.dialog-heading p,.key-state,.section-title span,.section-number,.event-time,.course-card p,.sessions-table td,.sessions-table small,.signal-tag,.empty,.empty h3,.eyebrow,.back-button,.brand small){color:var(--secondary)}
+:root[data-theme=dark] :is(h1,h2,h3,strong,.event-card h3,.sessions-table strong){color:var(--text)}
+:root[data-theme=dark] :is(.library-table th,.sessions-table th,.dialog-footer,.quote-box,.upload-name,.section-number,.log-panel pre){background:var(--surface-alt);border-color:var(--border);color:var(--secondary)}
+:root[data-theme=dark] :is(.library-table td,.sessions-table td,.dialog-heading,.dialog-footer,.event-bottom,.section-title,.run-footer){border-color:var(--border)}
+:root[data-theme=dark] :is(.library-table small,.settings-fields p,.vision-settings p,.account-card p,.sidebar-note p,.log-panel){color:var(--secondary)}
+:root[data-theme=dark] :is(.nav-item.active,.nav-item:hover,.tab.active,.nav-count,.feature-icon){background:var(--accent-soft);color:var(--accent)}
+:root[data-theme=dark] :is(.text-button,.workspace-stats strong,.back-button){color:var(--accent)}
+:root[data-theme=dark] .primary{background:#377b59;color:#fff}:root[data-theme=dark] .primary:hover{background:#438e68}
+:root[data-theme=dark] .secondary:hover{background:var(--surface-alt);border-color:var(--accent)}
+:root[data-theme=dark] :is(.risk-note,.badge.warning,.event-type,.event-type.attendance,.event-type.exam,.event-type.homework){background:var(--warning);color:var(--warning-text);border-color:#64522e}
+:root[data-theme=dark] .badge.error{background:var(--error-bg);color:var(--error-text)}
+:root[data-theme=dark] :is(.badge,.badge.neutral,.event-type.resource,.event-type.schedule){background:var(--surface-alt);color:var(--secondary)}
+:root[data-theme=dark] .inline-notice{background:var(--notice);color:var(--secondary);border-color:var(--border)}
+:root[data-theme=dark] .welcome{background:var(--surface)}
+:root[data-theme=dark] :is(.danger-text,.due-text){color:#efbd9b}
+:root[data-theme=dark] .tab{color:var(--secondary)}
+:root[data-theme=dark] .progress-meter{background:var(--surface-alt)}
+:root[data-theme=dark] .connection-dot.connected{background:var(--accent)}
+html[lang=en] .brand{font-size:15px}html[lang=en] .brand small{letter-spacing:1px}html[lang=en] .nav-item{gap:9px}
+@media(max-width:760px){.topbar{height:auto;min-height:55px;gap:8px;padding:9px 15px;flex-wrap:wrap}.topbar-actions{margin-left:auto;gap:6px}.topbar-actions select{font-size:12px;max-width:115px}.account-card{max-width:145px}html[lang=en] .brand{font-size:14px}.settings-fields{min-width:0}.field-grid{min-width:0}.settings-fields input{min-width:0}.dialog-heading h2{font-size:20px}}
+:root[data-theme=dark] :is(.workspace-stats span,.selected-count,.pagination,.event-toolbar>span,.event-time,.dialog-footer>span){color:var(--secondary)}

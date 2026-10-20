@@ -8,6 +8,8 @@ from ..schema import StrictModel
 
 
 class ModelSettings(StrictModel):
+    asr_deployment: Literal['cloud', 'self-hosted'] = 'cloud'
+    event_deployment: Literal['cloud', 'self-hosted'] = 'cloud'
     asr_provider: Literal['openai-compatible', 'gemini', 'groq'] = 'openai-compatible'
     asr_base_url: str = ''
     asr_model: str = ''
@@ -23,6 +25,10 @@ class ModelSettings(StrictModel):
 
     @model_validator(mode='after')
     def validate_urls(self):
+        if self.asr_deployment == 'self-hosted' and self.asr_provider != 'openai-compatible':
+            raise ValueError('自建转写服务请选择兼容接口')
+        if self.event_deployment == 'self-hosted' and self.event_provider != 'openai-compatible':
+            raise ValueError('自建分析服务请选择兼容接口')
         for value in (self.asr_base_url, self.event_base_url, self.vision_base_url):
             if value:
                 safe_base_url(value)
@@ -32,8 +38,10 @@ class ModelSettings(StrictModel):
     def from_environment(cls):
         provider = os.environ.get('YANHE_ASR_PROVIDER') or ('openai-compatible' if os.environ.get('YANHE_ASR_API_KEY')
             else 'gemini' if os.environ.get('GEMINI_API_KEY') else 'groq' if os.environ.get('GROQ_API_KEY') else 'openai-compatible')
-        deepseek = bool(os.environ.get('DEEPSEEK_API_KEY')) or not os.environ.get('YANHE_API_KEY')
+        deepseek = bool(os.environ.get('DEEPSEEK_API_KEY')) or not any(os.environ.get(key) for key in ('YANHE_API_KEY', 'YANHE_BASE_URL', 'YANHE_MODEL'))
         return cls(asr_provider=provider,
+            asr_deployment=os.environ.get('YANHE_ASR_DEPLOYMENT', 'cloud'),
+            event_deployment=os.environ.get('YANHE_EVENT_DEPLOYMENT', 'cloud'),
             asr_base_url=os.environ.get('YANHE_ASR_BASE_URL', ''), asr_model=os.environ.get('YANHE_ASR_MODEL', ''),
             asr_api_key=os.environ.get('YANHE_ASR_API_KEY') or os.environ.get('GEMINI_API_KEY' if provider == 'gemini' else 'GROQ_API_KEY' if provider == 'groq' else 'YANHE_ASR_API_KEY', ''),
             event_provider='deepseek' if deepseek else 'openai-compatible',
@@ -53,11 +61,11 @@ class ModelSettings(StrictModel):
     def ready(self, *, subtitles=False, vision=False):
         missing = []
         if not subtitles:
-            if not self.asr_api_key.get_secret_value():
+            if self.asr_deployment == 'cloud' and not self.asr_api_key.get_secret_value():
                 missing.append('音频转写密钥')
             if self.asr_provider == 'openai-compatible' and (not self.asr_base_url or not self.asr_model):
                 missing.append('音频转写地址与模型')
-        if not self.event_api_key.get_secret_value() or not self.event_base_url or not self.event_model:
+        if (self.event_deployment == 'cloud' and not self.event_api_key.get_secret_value()) or not self.event_base_url or not self.event_model:
             missing.append('事项分析地址、模型与密钥')
         if missing:
             raise ValueError('请先在模型设置中配置：' + '、'.join(missing))
@@ -69,6 +77,8 @@ class ModelSettings(StrictModel):
             if name.startswith(('YANHE_', 'DEEPSEEK_')) or name in ('GEMINI_API_KEY', 'GROQ_API_KEY'):
                 environment.pop(name)
         environment.update(tools)
+        environment['YANHE_ASR_ALLOW_NO_KEY'] = '1' if self.asr_deployment == 'self-hosted' else '0'
+        environment['YANHE_ALLOW_NO_KEY'] = '1' if self.event_deployment == 'self-hosted' else '0'
         for name, value in {
             'YANHE_ASR_API_KEY': self.asr_api_key.get_secret_value(), 'YANHE_ASR_BASE_URL': self.asr_base_url,
             'YANHE_ASR_MODEL': self.asr_model, 'YANHE_VISION_API_KEY': self.vision_api_key.get_secret_value() or self.event_api_key.get_secret_value(),

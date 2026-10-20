@@ -183,7 +183,8 @@ class CloudRecognizer:
     def __init__(self, options):
         self.backend = options.backend
         self.key, base, self.model = cloud_settings(options.backend, options.model)
-        if not self.key or not base or not self.model:
+        allow_no_key = self.backend == 'openai-compatible' and os.environ.get('YANHE_ASR_ALLOW_NO_KEY') == '1'
+        if (not self.key and not allow_no_key) or not base or not self.model:
             raise MediaError('请配置云端转写的 YANHE_ASR_API_KEY、YANHE_ASR_BASE_URL、YANHE_ASR_MODEL；也可选 gemini 或 groq 预设。')
         self.base = safe_base_url(base)
 
@@ -296,7 +297,7 @@ class CloudRecognizer:
             if kwargs.get('language'):
                 data['language'] = kwargs['language']
             raw = post_with_retry(self.base + '/audio/transcriptions',
-                headers={'Authorization': 'Bearer ' + self.key}, data=data,
+                headers={'Authorization': 'Bearer ' + self.key} if self.key else {}, data=data,
                 files={'file': ('chunk.wav', audio, 'audio/wav')})
         try:
             if not isinstance(raw, dict) or 'segments' not in raw:
