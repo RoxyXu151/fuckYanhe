@@ -34,3 +34,6 @@ storage-state.json
 auth.json
 Thumbs.db
 .DS_Store
+
+**/official-browser/
+**/supervisor.json

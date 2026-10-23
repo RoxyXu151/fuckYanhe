@@ -51,12 +51,20 @@ def cloud_settings(backend, model):
             model or os.environ.get('YANHE_ASR_MODEL', ''))
 
 
+def local_model_url(url):
+    return urlsplit(url).hostname in ('localhost', '127.0.0.1', '::1')
+
+
 def post_with_retry(url, **kwargs):
     last_status = None
     for attempt in range(3):
         delay = 2 ** attempt
         try:
-            with httpx.Client(timeout=180, follow_redirects=False) as client:
+            # Windows system proxies can intercept loopback model uploads. Keep
+            # public cloud proxy support; give self-hosted alignment enough time.
+            local = local_model_url(url)
+            with httpx.Client(timeout=httpx.Timeout(600 if local else 180, connect=15),
+                              trust_env=not local, follow_redirects=False) as client:
                 response = client.post(url, **kwargs)
             response.raise_for_status()
             return response.json()

@@ -1,10 +1,19 @@
-# Yanhe Classroom Sentinel
+# fuckYanhe
 
 English | [简体中文](README.md)
 
 Find attendance checks, homework, exams, grading rules and schedule changes in lecture recordings or local media you are authorized to access. Every candidate notice includes original evidence and a replayable timestamp.
 
 This is a local web workspace, not an official university product. Model results require human review. A completed analysis or an empty result does not guarantee that nothing was missed.
+
+## v0.8.0
+
+- Separate download and analysis queues, parallel downloads, successful-chunk reuse and restart recovery.
+- Windows Credential Manager session storage with official browser persistence and automatic validation; no password storage.
+- Adaptive Qwen alignment repair, proxy-free loopback model requests and bounded failed-chunk recovery.
+- Course-aware return navigation across reports, study views and page reloads.
+- Optional Windows sign-in startup and connection watchdog with configurable server, ports and data directory.
+- Renamed to **fuckYanhe**. The `yanhe_sentinel` module and `yanhe-sentinel` command remain compatible.
 
 ## Features
 
@@ -84,7 +93,7 @@ Long transcripts are processed in windows of up to 160 segments, approximately 1
 
 Successful windows are cached privately per lecture. Stopping takes effect after the current request finishes. Resume reuses successful windows; regeneration calls the model again. A changed transcript marks old notes as outdated. Plain TXT files support notes and segment references but have no timestamp seeking. Saved notes remain readable offline and can be exported as Markdown.
 
-Before upgrading an active workspace, stop its tasks to preserve cached results. Reconnect to the school platform after restarting, then resume tasks in the queue.
+Before upgrading an active workspace, stop its tasks to preserve cached results. On restart the queue resumes and Windows validates the saved school session; reconnect only if the official platform reports genuine expiry.
 
 ## CLI and tests
 

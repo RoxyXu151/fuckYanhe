@@ -19,4 +19,5 @@ jobs:
       - run: node --check src/yanhe_sentinel/web/static/workspace.js
       - run: node --check src/yanhe_sentinel/web/static/study.js
       - run: node --check src/yanhe_sentinel/web/static/product.js
+      - run: node --test tests/navigation.test.cjs
       - run: pytest -q

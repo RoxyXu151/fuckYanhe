@@ -6,6 +6,8 @@ from urllib.parse import urlsplit
 
 import httpx
 
+from .cloud_asr import local_model_url
+
 from .schema import Extraction
 
 PROMPT = '''你是课堂重要通知检测器。遍历全部字幕，检出 attendance 点名签到、homework 作业截止、
@@ -46,6 +48,40 @@ def restore_exact_quote_boundaries(extraction, segments):
         texts = [lookup[i][1].text for i in ids]
         if event.quote == ''.join(texts):
             event.quote = '\n'.join(texts)
+    return extraction
+
+
+def restore_unique_quote_location(extraction, segments):
+    """Rebind only a uniquely occurring literal quote; ignore whitespace only.
+
+    No fuzzy matching, word replacement or guessed timestamps. Ambiguous and
+    paraphrased evidence still fails the ordinary verifier.
+    """
+    from .detection import verify
+    text = '\n'.join(s.text for s in segments)
+    positions = [i for i, char in enumerate(text) if not char.isspace()]
+    compact = ''.join(text[i] for i in positions)
+    ranges, cursor = [], 0
+    for segment in segments:
+        ranges.append((cursor, cursor + len(segment.text), segment.id))
+        cursor += len(segment.text) + 1
+    for event in extraction.events:
+        try:
+            verify(Extraction(events=[event]), segments)
+            continue
+        except ProviderError:
+            pass
+        needle = ''.join(char for char in event.quote if not char.isspace())
+        if len(needle) < 8:
+            continue
+        at = compact.find(needle)
+        if at < 0 or compact.find(needle, at + 1) >= 0:
+            continue
+        begin, end = positions[at], positions[at + len(needle) - 1] + 1
+        ids = [sid for start, stop, sid in ranges if start < end and stop > begin]
+        candidate = event.model_copy(update={'quote': text[begin:end], 'segment_ids': ids})
+        verify(Extraction(events=[candidate]), segments)
+        event.quote, event.segment_ids = candidate.quote, candidate.segment_ids
     return extraction
 
 
@@ -91,7 +127,7 @@ class OpenAICompatibleProvider:
         if self.model.lower().startswith('qwen3'):
             self.identity += f'|thinking={self.qwen_thinking}'
 
-    def extract(self, segments, lecture_date=None):
+    def extract(self, segments, lecture_date=None, *, _repair_depth=0):
         messages = [{'role': 'system', 'content': PROMPT + '\nJSON Schema:\n' + json.dumps(Extraction.model_json_schema(), ensure_ascii=False)}]
         if self.model.lower().startswith('qwen3'):
             # Concrete examples help small instruction models honor scope exclusions.
@@ -111,6 +147,7 @@ class OpenAICompatibleProvider:
         for attempt in range(3):
             result = self.complete(messages, validator=Extraction.model_validate)
             restore_exact_quote_boundaries(result, segments)
+            restore_unique_quote_location(result, segments)
             try:
                 if had_candidates and not result.events:
                     raise ProviderError('修正引用时丢失先前候选通知，不能据此当作没有事项')
@@ -118,6 +155,20 @@ class OpenAICompatibleProvider:
                 return result
             except ProviderError as exc:
                 if attempt == 2:
+                    # Reduce only the failed window, retaining neighboring cues
+                    # and strict evidence checks. Never convert lost candidates
+                    # into a successful empty report.
+                    if _repair_depth < 2 and len(segments) >= 6:
+                        middle = len(segments) // 2
+                        recovered = []
+                        for child in (segments[:middle + 1], segments[middle - 1:]):
+                            recovered.extend(self.extract(child, lecture_date,
+                                _repair_depth=_repair_depth + 1).events)
+                        if (had_candidates or result.events) and not recovered:
+                            raise ProviderError('缩小窗口后未找回候选通知，保留为未完成以供复核')
+                        combined = Extraction(events=recovered)
+                        verify(combined, segments)
+                        return combined
                     raise
                 had_candidates = had_candidates or bool(result.events)
                 referenced = {sid for item in result.events for sid in item.segment_ids}
@@ -143,7 +194,7 @@ class OpenAICompatibleProvider:
                 payload['max_tokens'] = 8192
         for attempt in range(3):
             try:
-                with httpx.Client(timeout=180, follow_redirects=False) as client:
+                with httpx.Client(timeout=180, trust_env=not local_model_url(self.base), follow_redirects=False) as client:
                     response = client.post(self.base + '/chat/completions', json=payload,
                                            headers={'Authorization': 'Bearer ' + self.key} if self.key else {})
                 response.raise_for_status()

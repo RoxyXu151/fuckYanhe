@@ -5,7 +5,7 @@ function bindStudyLinks(){document.querySelectorAll('[data-study-job]').forEach(
 async function openStudy(id){
   saveStudyProgress(true);const opening=++productState.studyOpenRequest;
   try{const data=await api(`/api/jobs/${encodeURIComponent(id)}/learning`);
-    if(opening!==productState.studyOpenRequest)return;Object.assign(studyState,{jobId:id,data,transcript:null,chapter:null,mode:'notes',query:'',offset:0,language:data.model?data.language:ui.language});
+    if(opening!==productState.studyOpenRequest)return;rememberDetailOrigin(id);Object.assign(studyState,{jobId:id,data,transcript:null,chapter:null,mode:'notes',query:'',offset:0,language:data.model?data.language:ui.language});
     productState.playbackTouchedJob=null;showView('study');await Promise.all([loadStudyTranscript(),loadStudyRecords(id)]);
   }catch(error){toast(error.message,true);}
 }
@@ -18,7 +18,7 @@ function renderStudy(){
     bindStudyLinks();return;
   }
   const d=studyState.data;
-  $('#main-content').innerHTML=`<button class="back-button" id="study-back">← ${ui.t('选择其他课次')}</button>`+
+  $('#main-content').innerHTML=`<button class="back-button" id="study-back">${detailBackLabel()}</button>`+
     heading(d.title,ui.t('文字稿可直接查看；生成讲义使用当前事项分析模型，不重新转写音频。'))+
     `<p class="inline-notice">${ui.t('AI 讲义仅覆盖已有字幕。漏句、公式识别和跨分段主题可能影响结果，请对照原录播核验。')}</p>
     <div class="study-layout"><aside class="panel study-outline"><h2>${ui.t('章节目录')}</h2><div id="study-chapters"></div></aside>
@@ -27,7 +27,7 @@ function renderStudy(){
     <div class="study-tabs"><button class="tab" id="study-notes-tab">${ui.t('讲义与知识点')}</button><button class="tab" id="study-transcript-tab">${ui.t('原始文字稿')}</button><button class="text-button" id="study-report">${ui.t('查看通知报告')}</button></div>
     <section class="panel" id="study-personal"></section><div id="study-notes"></div><section id="study-transcript" class="panel"><div class="study-search"><label for="study-query">${ui.t('搜索文字稿')}</label><input id="study-query" placeholder="${ui.t('输入原文关键词')}" value="${esc(studyState.query)}"><button class="button secondary" id="study-search-button">${ui.t('搜索')}</button></div><div id="study-transcript-rows"></div></section>
     </section></div>`;
-  $('#study-back').onclick=()=>{saveStudyProgress(true);productState.studyOpenRequest++;studyState.jobId=null;studyState.data=null;renderStudy();};
+  $('#study-back').onclick=returnFromDetail;
   $('#study-notes-tab').onclick=()=>{studyState.mode='notes';renderStudyContent();};
   $('#study-transcript-tab').onclick=()=>{studyState.mode='transcript';renderStudyContent();};
   $('#study-report').onclick=()=>openJob(studyState.jobId);

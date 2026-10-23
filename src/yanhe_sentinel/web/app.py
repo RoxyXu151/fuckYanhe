@@ -13,7 +13,8 @@ import zipfile
 
 from fastapi import FastAPI, File, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from starlette.background import BackgroundTask
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, SecretStr, ValidationError
 from starlette.middleware.sessions import SessionMiddleware
@@ -22,6 +23,7 @@ from ..media_tools import MediaError
 from ..portal import PortalError, YanheClient
 from ..schema import Report
 from .auth import BrowserLogin
+from .session_store import MemorySessionStore, WindowsSessionStore, SavedSession
 from .jobs import JobRunner, atomic_json
 from .models import BatchRequest, JobRequest, LibraryUpdate, ModelSettings
 from .library import CourseLibrary
@@ -47,7 +49,8 @@ class ReviewInput(BaseModel):
     reviewed: bool
 
 
-def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None, runner=None, testing=False):
+def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None, runner=None, testing=False,
+               session_store=None):
     root = Path(data_dir or 'runs/webui').resolve()
     root.mkdir(parents=True, exist_ok=True)
     uploads = root / 'uploads'
@@ -57,19 +60,31 @@ def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None,
     records = StudyRecords(study)
     preferences = Preferences(root)
     library = CourseLibrary(root / 'library.json')
-    login = login_manager or BrowserLogin(client_factory=client_factory)
+    import os
+    store = session_store if session_store is not None else (
+        WindowsSessionStore(root) if os.name == 'nt' and not testing else MemorySessionStore())
+    saved_session = SavedSession(store, client_factory,
+        on_restored=lambda client: getattr(jobs, 'resume_pending', lambda *a, **k: None)(
+            preferences.load(), client=client))
+    login = login_manager or BrowserLogin(client_factory=client_factory,
+        profile_dir=root / 'private' / 'official-browser' if not testing else None,
+        on_connected=saved_session.remember)
     sessions, lock = {}, threading.RLock()
 
     @asynccontextmanager
     async def lifespan(app):
+        saved_session.start()
+        getattr(jobs, 'resume_pending', lambda *a, **k: None)(preferences.load())
         yield
         login.close()
+        saved_session.close()
         study.close()
         jobs.close()
 
     app = FastAPI(title='延河课堂重要事项雷达', lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     app.state.jobs, app.state.login, app.state.sessions = jobs, login, sessions
     app.state.study = study
+    app.state.saved_session = saved_session
     app.add_middleware(SessionMiddleware, secret_key=secrets.token_hex(32), session_cookie='yanhe_workspace',
                        same_site='strict', https_only=False, max_age=43200)
 
@@ -98,7 +113,9 @@ def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None,
                 sessions[sid] = Session(settings=preferences.load())
             if mutation and not secrets.compare_digest(request.headers.get('x-csrf-token', ''), request.session['csrf']):
                 raise PortalError('页面会话已更新，请刷新后再试。', 'csrf', 403)
-            return sessions[sid]
+            session = sessions[sid]
+        saved_session.attach(session)
+        return session
 
     def portal_for(request, mutation=False):
         session = session_for(request, mutation)
@@ -109,6 +126,11 @@ def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None,
     @app.exception_handler(PortalError)
     async def platform_error(request, exc):
         if exc.kind == 'auth':
+            if request.url.path != '/api/auth/token':
+                try:
+                    saved_session.forget(expired=True)
+                except OSError:
+                    pass
             sid = request.session.get('sid')
             session = sessions.get(sid)
             if session:
@@ -134,11 +156,13 @@ def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None,
     @app.get('/api/state')
     def state(request: Request):
         session = session_for(request)
+        getattr(jobs, 'resume_pending', lambda *a, **k: None)(session.settings, client=session.portal)
         return {'csrf': request.session['csrf'], 'auth': {
             'connected': bool(session.portal), 'display_name': (session.user or {}).get('display_name', ''),
             **session.login_status}, 'settings': {**session.settings.public(), 'defaults_saved': preferences.file.exists()}, 'jobs': jobs.list(),
             'library': library.snapshot(jobs.list()), 'study_tasks': study.list_status(),
-            'features': {'study': True, 'product': True}}
+            'features': {'study': True, 'product': True, 'remote_storage': bool(getattr(jobs, 'archive', None)),
+                         'download_workers': getattr(jobs, 'download_workers', 1), 'analysis_workers': getattr(jobs, 'analysis_workers', 1)}}
 
     @app.get('/api/study-tasks')
     def study_tasks(request: Request):
@@ -174,6 +198,7 @@ def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None,
     @app.get('/api/auth')
     def auth_status(request: Request):
         session = session_for(request)
+        getattr(jobs, 'resume_pending', lambda *a, **k: None)(session.settings, client=session.portal)
         return {'connected': bool(session.portal), 'display_name': (session.user or {}).get('display_name', ''), **session.login_status}
 
     @app.post('/api/auth/token')
@@ -185,6 +210,7 @@ def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None,
             session.login_stop.set()
         session.portal, session.user = client, user
         session.login_status = {'state': 'connected', 'message': '已连接延河课堂'}
+        saved_session.remember(session)
         return {'connected': True, 'display_name': user['display_name']}
 
     @app.delete('/api/auth')
@@ -194,8 +220,16 @@ def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None,
             jobs.cancel_owner(session.user['owner_key'])
         if session.login_stop:
             session.login_stop.set()
+        try:
+            saved_session.forget()
+        except OSError:
+            raise ValueError('系统未能清除保存的校园会话，请稍后重试退出。') from None
+        with lock:
+            for other in sessions.values():
+                other.portal, other.user = None, None
+                other.login_status = dict(saved_session.status)
         session.portal, session.user = None, None
-        session.login_status = {'state': 'disconnected', 'message': '已退出登录'}
+        session.login_status = dict(saved_session.status)
         return {'ok': True}
 
     @app.put('/api/settings')
@@ -507,10 +541,32 @@ def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None,
         path = (directory / relative).resolve()
         if not path.is_relative_to(directory) or any(part.startswith('.') for part in Path(relative).parts):
             raise PortalError('文件不可访问。', 'file', 403)
-        if not path.is_file() or path.suffix.lower() not in ('.mp4', '.mkv', '.mov', '.webm', '.mp3', '.wav', '.aac', '.m4a', '.flac', '.ogg', '.srt', '.vtt', '.txt', '.md', '.json', '.jpg', '.png'):
+        if path.suffix.lower() not in ('.mp4', '.mkv', '.mov', '.webm', '.mp3', '.wav', '.aac', '.m4a', '.flac', '.ogg', '.srt', '.vtt', '.txt', '.md', '.json', '.jpg', '.png'):
             raise PortalError('文件不存在或不能通过工作台访问。', 'file', 404)
-        if path.name in ('job.json', 'reviews.json', 'study-records.json'):
+        if path.name in ('job.json', 'reviews.json', 'study-records.json', 'archive-index.json'):
             raise PortalError('此文件不作为报告附件提供。', 'file', 403)
+        if not path.is_file():
+            remote = getattr(jobs, 'archive', None)
+            if not remote or not remote.available(job_id, relative):
+                raise PortalError('文件不存在或不能通过工作台访问。', 'file', 404)
+            import httpx
+            client = remote.client()
+            headers = {name: request.headers[name] for name in ('range', 'if-range') if name in request.headers}
+            try:
+                response = client.send(client.build_request('GET', f'files/{job_id}/{relative}', headers=headers), stream=True)
+                if response.status_code not in (200, 206, 416):
+                    response.close()
+                    client.close()
+                    raise PortalError('远程录像暂不可达，请检查存储连接后重试。', 'storage', 503)
+            except httpx.HTTPError:
+                client.close()
+                raise PortalError('远程录像暂不可达，请检查存储连接后重试。', 'storage', 503) from None
+            def close_remote():
+                response.close()
+                client.close()
+            return StreamingResponse(response.iter_raw(), status_code=response.status_code,
+                headers={k: v for k, v in response.headers.items() if k in ('content-type', 'content-length', 'content-range', 'accept-ranges', 'last-modified', 'etag')},
+                background=BackgroundTask(close_remote))
         return FileResponse(path)
 
     @app.get('/api/jobs/{job_id}/export')

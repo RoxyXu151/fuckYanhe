@@ -3,8 +3,8 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "yanhe-classroom-sentinel"
-version = "0.7.0"
+name = "fuckYanhe"
+version = "0.8.0"
 description = "Evidence-backed important classroom notice detection"
 requires-python = ">=3.11"
 dependencies = ["pydantic>=2,<3", "httpx>=0.27,<1"]
@@ -16,6 +16,7 @@ web = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1", "python-multipart>=0.0.18,<1", "
 asr = ["faster-whisper>=1.2,<2", "imageio-ffmpeg>=0.6,<1"]
 
 [project.scripts]
+fuckYanhe = "yanhe_sentinel.cli:main"
 yanhe-sentinel = "yanhe_sentinel.cli:main"
 
 [tool.setuptools.packages.find]

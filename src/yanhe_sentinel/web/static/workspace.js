@@ -18,7 +18,7 @@ function renderLibrary(){
   if(state.savedCourse){renderSavedCourse();return;}
   const courses=state.library||[],done=courses.reduce((n,c)=>n+c.completed_sessions,0);
   const active=state.jobs.filter(j=>!terminal.has(j.status)).length;
-  $('#main-content').innerHTML=heading((ui.t("课程库")),(ui.t("课程、已完成课次和报告保存在本机。课次数量以已保存或最近同步的列表为准。")),
+  $('#main-content').innerHTML=heading((ui.t("课程库")),(state.features.remote_storage?ui.t("录像与缓存归档到远程服务器；课程索引、字幕和报告同时留在本机。课次数量以最近同步为准。"):ui.t("课程、已完成课次和报告保存在本机。课次数量以已保存或最近同步的列表为准。")),
     (`<button class="button secondary" data-action="classroom">${ui.t("添加 / 同步课程")}</button><button class="button secondary" data-action="local">${ui.t("导入本地文件")}</button>`))+
     `<div class="workspace-stats"><section><strong>${courses.filter(c=>!c.archived).length}</strong><span>${ui.t("在用课程")}</span></section><section><strong>${done}</strong><span>${ui.t("已完成课次")}</span></section><section><strong>${active}</strong><span>${ui.t("排队 / 处理中")}</span></section></div>
     ${!state.auth.connected?(`<p class="inline-notice">${ui.t("当前未连接延河课堂。已有报告可离线查看；同步录播或批量执行前，请先连接课堂。")}</p>`):''}
@@ -80,9 +80,11 @@ async function startCourseBatch(){
   }catch(e){toast(e.message,true);}finally{state.batchBusy=false;if(state.view==='library')renderLibrary();}
 }
 function renderQueue(){
-  const active=state.jobs.filter(j=>!terminal.has(j.status)),incomplete=state.jobs.filter(j=>terminal.has(j.status)&&j.status!=='completed');
+  const queueRank=j=>j.status==='running'?0:j.stage==='waiting_analysis'?1:2;
+  const active=state.jobs.filter(j=>!terminal.has(j.status)).sort((a,b)=>queueRank(a)-queueRank(b)),incomplete=state.jobs.filter(j=>terminal.has(j.status)&&j.status!=='completed');
   $('#main-content').innerHTML=heading((ui.t("任务队列")),`${active.length} ${ui.t("个任务排队或处理中，")}${incomplete.length} ${ui.t("个任务可继续。")}`,
     (`<button class="button secondary" data-action="library">${ui.t("从课程库批量执行")}</button>`))+
+    `<p class="muted">${ui.t("下载与分析独立排队，可同时运行；继续任务时仅补失败片段。")}</p>`+
     (state.batchFeedback?`<p class="inline-notice" role="status">${esc(state.batchFeedback)}</p>`:'')+
     (state.batchErrors?.length?`<div class="risk-note">${state.batchErrors.map(esc).join('<br>')}</div>`:'')+
     `<div class="queue-actions"><button class="button secondary" id="stop-queue" ${!active.length?'disabled':''}>${ui.t("停止全部待处理任务")}</button><button class="text-button" data-action="history">${ui.t("查看全部报告与记录")}</button></div><div class="job-list">${[...active,...incomplete].map(j=>`<section class="panel queue-card"><div><strong>${esc(j.title)}</strong>${jobBadge(j)}</div><p>${esc(stages[j.stage]||j.message)} ${j.total?esc(progressLabel(j)):''}</p><div class="row-actions"><button class="button secondary" data-job="${esc(j.id)}">${ui.t("查看")}${terminal.has(j.status)?(ui.t("报告")):(ui.t("进度"))}</button><button class="text-button" data-task-action="${esc(j.id)}">${terminal.has(j.status)?(ui.t("继续处理")):(ui.t("停止"))}</button></div></section>`).join('')||(`<div class="empty"><h3>${ui.t("目前没有待处理任务")}</h3><p>${ui.t("在课程库勾选多门课程，即可一键分析未完成课次。")}</p></div>`)}</div>`;

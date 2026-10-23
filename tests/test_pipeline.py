@@ -153,6 +153,27 @@ def test_cache_resume_and_idempotency(tmp_path):
     assert first.events == second.events
 
 
+def test_retry_only_calls_model_for_failed_analysis_windows(tmp_path):
+    class Recovering(Fake):
+        def __init__(self):
+            self.calls = []
+            self.fail = True
+        def extract(self, segments, lecture_date=None):
+            self.calls.append(segments[0].id)
+            if self.fail and segments[0].id == 1:
+                raise ProviderError('temporary failure')
+            return Extraction(events=[])
+    provider = Recovering()
+    cues = [cue('讲课', i, i * 400, i * 400 + 5) for i in range(3)]
+    first = analyze(cues, provider, Path('a.srt'), tmp_path)
+    assert first.failed_chunk_ids == [1]
+    provider.fail = False
+    provider.calls.clear()
+    second = analyze(cues, provider, Path('a.srt'), tmp_path)
+    assert second.analysis_status == 'completed'
+    assert provider.calls == [1]
+
+
 def test_corrupt_cache_recovered(tmp_path):
     analyze([cue()], MockProvider(), Path('a.srt'), tmp_path)
     next((tmp_path / '.cache').glob('*.json')).write_text('bad', encoding='utf-8')

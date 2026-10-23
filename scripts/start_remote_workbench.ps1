@@ -4,6 +4,7 @@ param(
     [int]$AsrRemotePort = 18765,
     [int]$EventRemotePort = 18766,
     [string]$EventModel = 'Qwen3-4B',
+    [string]$DataDirectory = '',
     [switch]$ConfigureOnly
 )
 $ErrorActionPreference = 'Stop'
@@ -20,7 +21,7 @@ if (-not (Test-Path -LiteralPath $keyFile)) {
 }
 if (-not (Get-NetTCPConnection -LocalPort 18765 -State Listen -ErrorAction SilentlyContinue)) {
     $tunnel = Start-Process -FilePath ssh -ArgumentList @('-N', '-o', 'BatchMode=yes', '-o', 'ExitOnForwardFailure=yes',
-        '-o', 'ServerAliveInterval=30', '-L', "127.0.0.1:18765:127.0.0.1:$AsrRemotePort",
+        '-o', 'ConnectTimeout=10', '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=3', '-L', "127.0.0.1:18765:127.0.0.1:$AsrRemotePort",
         '-L', "127.0.0.1:18766:127.0.0.1:$EventRemotePort", $SshHost) -WindowStyle Hidden -PassThru
     $tunnel.Id | Set-Content -LiteralPath (Join-Path $stateRoot 'tunnel.pid')
 }
@@ -35,5 +36,14 @@ $env:YANHE_MODEL = $EventModel
 $env:YANHE_QWEN_THINKING = '1'
 $env:YANHE_API_KEY = $env:YANHE_ASR_API_KEY
 Remove-Item Env:DEEPSEEK_API_KEY -ErrorAction SilentlyContinue
+if (-not $DataDirectory) { $DataDirectory = Join-Path $projectRoot 'runs/webui' }
+New-Item -ItemType Directory -Force -Path $DataDirectory | Out-Null
+$temporaryRoot = Join-Path $DataDirectory 'temp'
+New-Item -ItemType Directory -Force -Path $temporaryRoot | Out-Null
+$env:TEMP = $temporaryRoot
+$env:TMP = $temporaryRoot
+$env:YANHE_DOWNLOAD_WORKERS = '2'
+$env:YANHE_SEGMENT_WORKERS = '4'
+$env:YANHE_ANALYSIS_WORKERS = '1'
 if ($ConfigureOnly) { return }
-& (Join-Path $projectRoot '.venv/Scripts/python.exe') -m yanhe_sentinel webui
+& (Join-Path $projectRoot '.venv/Scripts/python.exe') -m yanhe_sentinel webui --data-dir $DataDirectory --no-browser

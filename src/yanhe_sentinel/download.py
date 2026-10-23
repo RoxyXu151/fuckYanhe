@@ -1,5 +1,6 @@
 """Authorized VOD downloads with TLS verification, bounded retries and local-only remuxing."""
 
+from concurrent.futures import ThreadPoolExecutor
 from hashlib import sha256
 import io
 import json
@@ -118,6 +119,14 @@ class VODDownloader:
         return destination
 
     def video(self, url, destination: Path):
+        workers = max(1, min(8, int(os.environ.get('YANHE_SEGMENT_WORKERS', '4'))))
+        executor = ThreadPoolExecutor(max_workers=workers, thread_name_prefix='yanhe-segment')
+        try:
+            return self._video(url, destination, executor)
+        finally:
+            executor.shutdown(wait=True, cancel_futures=True)
+
+    def _video(self, url, destination: Path, executor):
         if urlsplit(url).path.lower().endswith('.mp4'):
             return self.direct(url, destination)
         import m3u8
@@ -160,13 +169,8 @@ class VODDownloader:
             local_name = f'key-{index}.key'
             (work / local_name).write_bytes(key_bytes)
             key_names[key.uri] = local_name
-        ranges = {}
-        local_lines = ['#EXTM3U', '#EXT-X-VERSION:7',
-            '#EXT-X-TARGETDURATION:' + str(max(1, math.ceil(max(s.duration for s in playlist.segments)))),
-            '#EXT-X-MEDIA-SEQUENCE:' + str(int(playlist.media_sequence or 0))]
-        previous_key, previous_map = None, None
+        ranges, transfers = {}, []
         for index, segment in enumerate(playlist.segments):
-            self.check_canceled()
             original = urljoin(base, segment.uri)
             byte_range = None
             if segment.byterange:
@@ -174,8 +178,15 @@ class VODDownloader:
                 start = int(offset) if offset else ranges.get(original, 0)
                 byte_range = (start, start + int(length) - 1)
                 ranges[original] = byte_range[1] + 1
+            transfers.append(executor.submit(self._file, original, work / f'segment-{index:06}.ts', byte_range=byte_range))
+        local_lines = ['#EXTM3U', '#EXT-X-VERSION:7',
+            '#EXT-X-TARGETDURATION:' + str(max(1, math.ceil(max(s.duration for s in playlist.segments)))),
+            '#EXT-X-MEDIA-SEQUENCE:' + str(int(playlist.media_sequence or 0))]
+        previous_key, previous_map = None, None
+        for index, segment in enumerate(playlist.segments):
+            self.check_canceled()
             name = f'segment-{index:06}.ts'
-            self._file(original, work / name, byte_range=byte_range)
+            transfers[index].result()
             if segment.discontinuity:
                 local_lines.append('#EXT-X-DISCONTINUITY')
             key = segment.key

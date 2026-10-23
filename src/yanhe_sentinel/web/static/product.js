@@ -8,19 +8,55 @@ function writeRoute(view=state.view){
   if(view==='study'&&studyState.jobId)path+='/' + studyState.jobId;
   if(view==='report'&&state.currentJob)path+='/' + state.currentJob;
   if(view==='library'&&state.savedCourse)path='course/'+encodeURIComponent(state.savedCourse);
+  if(['study','report'].includes(view)&&path.includes('/')&&productState.detailOrigin)path+='?from='+encodeURIComponent(productState.detailOrigin);
   if(location.hash!=='#/'+path)history.pushState(null,'','#/'+path);
 }
 async function restoreRoute(){
   productState.restoring=true;
   try{
-    const parts=location.hash.replace(/^#\//,'').split('/'),view=parts[0],id=parts[1];
+    const [path,query='']=location.hash.replace(/^#\//,'').split('?');
+    const parts=path.split('/'),view=parts[0],id=parts[1];
     if(['study','report'].includes(view)&&id&&state.jobs.some(job=>job.id===id)){
+      productState.detailOrigin=validDetailOrigin(new URLSearchParams(query).get('from'));
       if(view==='study')await openStudy(id);else await openJob(id);
     }else if(view==='course'&&id&&savedCourse(decodeURIComponent(id))){state.savedCourse=decodeURIComponent(id);showView('library');}
-    else if(['home','library','study','queue','history','classroom','local'].includes(view)&&parts.length===1)showView(view);
+    else if(['home','library','study','queue','history','classroom','local'].includes(view)&&parts.length===1){
+      if(view==='library')state.savedCourse=null;
+      if(view==='study'){saveStudyProgress(true);productState.studyOpenRequest++;studyState.jobId=null;studyState.data=null;}
+      showView(view);
+    }
     else{showView('home');history.replaceState(null,'','#/home');}
   }catch(error){showView('home');history.replaceState(null,'','#/home');toast(error.message,true);}
   finally{productState.restoring=false;}
+}
+function validDetailOrigin(origin){
+  if(['home','library','study','queue','history'].includes(origin))return origin;
+  if(origin?.startsWith('course/')&&savedCourse(decodeURIComponent(origin.slice(7))))return origin;
+  return null;
+}
+function rememberDetailOrigin(id){
+  if(productState.restoring)return;
+  if(['report','study'].includes(state.view)&&(state.view!=='study'||studyState.jobId))return;
+  productState.detailOrigin=state.view==='library'&&state.savedCourse
+    ?'course/'+encodeURIComponent(state.savedCourse):validDetailOrigin(state.view);
+}
+function detailBackLabel(){
+  return ui.t(productState.detailOrigin?.startsWith('course/')?'← 返回课程课次':
+    productState.detailOrigin==='queue'?'← 返回任务队列':
+    productState.detailOrigin==='home'?'← 返回工作台':
+    productState.detailOrigin==='study'?'选择其他课次':
+    productState.detailOrigin==='library'?'← 返回课程库':'← 返回处理记录');
+}
+function returnFromDetail(){
+  const origin=validDetailOrigin(productState.detailOrigin);
+  if(origin?.startsWith('course/')){state.savedCourse=decodeURIComponent(origin.slice(7));showView('library');return;}
+  if(origin==='library')state.savedCourse=null;
+  if(origin==='study'){openStudyPicker();return;}
+  showView(origin||'history');
+}
+function openStudyPicker(){
+  saveStudyProgress(true);productState.studyOpenRequest++;studyState.jobId=null;studyState.data=null;
+  productState.detailOrigin=null;showView('study');
 }
 window.addEventListener('popstate',()=>restoreRoute());
 window.addEventListener('beforeunload',event=>{if(Object.values(productState.drafts).some(d=>d.dirty)){event.preventDefault();event.returnValue='';}});
