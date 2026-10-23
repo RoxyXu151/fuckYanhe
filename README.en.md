@@ -6,6 +6,10 @@ Find attendance checks, homework, exams, grading rules and schedule changes in l
 
 This is a local web workspace, not an official university product. Model results require human review. A completed analysis or an empty result does not guarantee that nothing was missed.
 
+## v0.8.1 · Bento Grid
+
+A Bento dashboard and unified course, report and study surfaces. Existing workflows, bilingual UI and light/dark themes are retained, with responsive narrow-screen layouts.
+
 ## v0.8.0
 
 - Separate download and analysis queues, parallel downloads, successful-chunk reuse and restart recovery.

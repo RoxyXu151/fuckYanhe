@@ -1,0 +1,85 @@
+/* Shared Bento surfaces; existing DOM controls and application state are retained. */
+:root{--page:#f3f3ef;--surface:#fff;--surface-alt:#f7f8f4;--text:#252c28;--secondary:#68716a;--border:#e1e5dc;--accent:#315642;--accent-soft:#e9efdf;--notice:#edf1e7;--tile-radius:24px;--lime:#dcecb8;--hero-ink:#20372a;--shadow:0 3px 14px #23372505;--ink:var(--text);--body:var(--secondary);--line:var(--border);--paper:var(--page);--green:var(--accent);--white:var(--surface);--green-soft:var(--accent-soft)}
+:root[data-theme=dark]{--page:#111512;--surface:#1b211d;--surface-alt:#222a24;--text:#e9ede6;--secondary:#b0baad;--border:#333d34;--accent:#d3e7aa;--accent-soft:#303e2b;--notice:#253024;--lime:#d2e5ae;--hero-ink:#233323;--shadow:none}
+body{font-family:Inter,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;letter-spacing:.01em}
+.workspace{grid-template-columns:224px minmax(0,1fr)}
+.sidebar{padding:32px 18px 20px;background:var(--surface);border-right:1px solid var(--border)}
+.brand{font-size:20px;letter-spacing:-.7px;gap:10px}.brand small{font-size:8px;letter-spacing:1.4px;color:var(--secondary)}
+.brand-mark{width:37px;height:37px;font-size:27px;border-radius:12px;background:var(--text);color:var(--page)}
+.nav-caption{font-size:10px;margin:42px 13px 14px;color:var(--secondary)}
+.nav-item{padding:13px 14px;border-radius:13px;margin:5px 0;font-size:13px;color:var(--secondary);transition:background .16s,color .16s}
+.nav-item.active{background:var(--accent-soft);color:var(--text)}.nav-item:hover{background:var(--surface-alt)}
+.nav-count{border-radius:7px;background:var(--surface);color:var(--secondary)}
+.sidebar-note{margin:28px 12px;color:var(--secondary)}.sidebar-note p{color:var(--secondary)}
+.account-card{padding:16px 13px;border-radius:17px;background:var(--surface-alt);border-color:var(--border)}
+.account-card p,.account-card details,.account-card small,.sidebar-bottom{color:var(--secondary)}
+.topbar{height:74px;background:var(--page);padding:0 34px;border-bottom:0;color:var(--secondary)}
+.topbar-actions select{background:var(--surface);border-color:var(--border);border-radius:9px}
+.icon-button{background:var(--surface);border-radius:10px;color:var(--text)}
+main{max-width:1540px;padding:14px 34px 44px}.footer{color:var(--secondary);padding:0 25px 24px}
+h1{font-size:30px;font-weight:650;letter-spacing:-1px}h2{font-size:18px;letter-spacing:-.3px}h3{letter-spacing:-.15px}
+.page-heading{margin:14px 0 26px;align-items:center}.page-heading p{color:var(--secondary);line-height:1.8}
+.button{border-radius:11px;font-size:12px;min-height:40px;padding:10px 17px;gap:10px;transition:background .16s,transform .16s}
+.button:active{transform:translateY(1px)}.button.primary{background:var(--accent);color:var(--page);box-shadow:none}
+.button.primary:hover{filter:brightness(1.08)}.button.secondary{background:var(--surface);border-color:var(--border);color:var(--text)}
+.text-button{color:var(--secondary);font-size:12px}.text-button:hover{color:var(--accent)}
+input,select,textarea{border-radius:10px;background:var(--surface);border-color:var(--border);color:var(--text)}
+button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.panel,.course-card,.feature,.empty,.steps{border-radius:var(--tile-radius);background:var(--surface);border-color:var(--border);box-shadow:var(--shadow)}
+.section-title{padding:0;gap:12px}.section-title h2,.section-title h3{margin:0}.section-title .text-button{padding-right:0}
+.workspace-stats{gap:16px;margin-bottom:22px}.workspace-stats section{padding:23px;border-radius:20px;background:var(--surface);border:1px solid var(--border)}
+.workspace-stats strong{font-size:35px;font-weight:600;letter-spacing:-1.5px}.workspace-stats span{color:var(--secondary)}
+.toolbar{gap:16px;padding:17px 20px;background:var(--surface);border:1px solid var(--border);border-radius:18px;flex-wrap:wrap}
+.table-wrap{overflow-x:auto}.library-table th,.sessions-table th{background:var(--surface-alt);color:var(--secondary);font-size:11px;letter-spacing:.04em;font-weight:500}
+.library-table td,.sessions-table td{padding:19px 20px;border-color:var(--border)}
+.library-table td strong,.sessions-table td strong{font-size:13px;font-weight:600}.library-table tbody tr:hover,.sessions-table tbody tr:hover{background:var(--surface-alt)}
+.batch-bar{border-radius:18px;padding:17px 20px;background:var(--accent-soft)}
+.course-notes{padding:22px}.course-notes textarea{border-radius:12px}.back-button{color:var(--secondary);font-size:12px;margin:14px 0 20px}
+.job-card,.queue-card{border:1px solid var(--border);border-radius:18px;background:var(--surface);padding:21px 23px;gap:16px}
+.job-card:hover{border-color:var(--accent);background:var(--surface-alt);box-shadow:none}
+.job-card h3{font-size:14px}.job-card p{font-size:12px;color:var(--secondary)}
+.badge{border-radius:7px;padding:5px 9px;font-size:10px;white-space:nowrap}.badge.success{background:var(--accent-soft);color:var(--accent)}
+.report-layout{gap:20px}.event-card{border:1px solid var(--border);border-radius:22px;padding:25px;background:var(--surface);margin-bottom:16px}
+.quote-box{background:var(--surface-alt);border-left:3px solid var(--accent);border-radius:0 12px 12px 0;padding:16px;line-height:1.9}
+.summary-card,.quality-details,.study-note{border-radius:22px}.study-outline{border-radius:22px}.study-player{border-radius:22px}.study-generation{border-radius:20px}
+.study-layout{gap:20px;grid-template-columns:240px minmax(0,1fr)}.study-tabs{padding:5px;background:var(--surface);border:1px solid var(--border);border-radius:13px}
+.tab{border-radius:9px}.tab.active{color:var(--text);background:var(--accent-soft)}
+dialog{border-radius:25px;border-color:var(--border);box-shadow:0 30px 100px #0004}dialog::backdrop{background:#0b160d77;backdrop-filter:blur(5px)}
+.empty{line-height:1.8}.risk-note,.inline-notice{border-radius:13px}.connection-banner{border-radius:15px;margin:0 34px 15px}
+/* Dashboard: one large feature tile, three compact metrics, and two content columns. */
+.bento-dashboard{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:20px;align-items:stretch}
+.bento-hero{grid-column:span 8;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:flex-start;background:var(--lime);color:var(--hero-ink);border-radius:28px;padding:30px 34px;min-height:310px}
+.hero-kicker{display:flex;align-items:center;gap:9px;font-size:15px;font-weight:650;letter-spacing:-.2px;margin-bottom:25px}.hero-logomark{font-size:23px}.hero-edition{font-weight:400;font-size:10px;margin-left:8px;padding:5px 9px;border:1px solid #243a2a30;border-radius:20px;letter-spacing:0}
+.bento-hero h1{font-size:clamp(25px,2.8vw,40px);line-height:1.35;letter-spacing:-1.6px;max-width:570px;font-weight:600;text-wrap:balance}
+.bento-hero>p{font-size:12px;color:var(--hero-ink);opacity:.76;margin:14px 0 23px;max-width:540px;line-height:1.85}
+.bento-hero .primary{background:#293d2e;color:#fff}.bento-hero .secondary{background:#ffffff70;border-color:#243a2a15;color:var(--hero-ink)}
+.hero-footer{width:100%;display:flex;gap:15px;flex-wrap:wrap;justify-content:space-between;font-size:10px;margin-top:auto;padding-top:26px;color:var(--hero-ink);opacity:.75}.hero-footer>span:first-child{display:flex;align-items:center;gap:7px}.hero-footer .connection-dot.connected{background:#355332}
+.bento-stats{grid-column:span 4;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:0}
+.bento-stats section{display:flex;flex-direction:column;justify-content:space-between;padding:19px 21px;min-width:0;border-radius:22px}
+.bento-stats section:last-child{grid-column:span 2;display:grid;grid-template-columns:1fr auto;align-items:center;gap:6px 12px;background:var(--surface-alt)}
+.bento-stats section:last-child .stat-heading{grid-column:1/-1}.bento-stats section:last-child .text-button{padding-right:0;justify-self:end}
+.bento-stats strong{font-size:42px;line-height:1.2;margin:10px 0;display:flex;align-items:baseline;gap:7px}.bento-stats strong small{font-size:10px;letter-spacing:0;font-weight:400;color:var(--secondary)}
+.bento-stats section>span{font-size:10px;line-height:1.7}.stat-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px}.stat-heading>span:last-child{font-size:19px;color:var(--accent)}
+.bento-dashboard .readiness{grid-column:span 8;margin:0;padding:23px}.bento-dashboard .readiness .section-title{margin-bottom:19px}
+.readiness-grid{gap:12px}.readiness-step{position:relative;background:var(--surface-alt);border:1px solid var(--border);border-radius:16px;padding:19px 16px 26px;min-width:0;transition:border-color .16s}
+.readiness-step:last-child{border-right:1px solid var(--border)}.readiness-step:hover{background:var(--accent-soft);border-color:var(--accent)}
+.readiness-step strong{font-size:13px;line-height:1.6;margin:16px 0 7px}.readiness-step p{font-size:11px;line-height:1.9;color:var(--secondary)}
+.check-state{width:28px;height:28px;font-size:11px;border-radius:9px;background:var(--surface);color:var(--accent);border:1px solid var(--border)}.tile-arrow{position:absolute;right:13px;top:20px;color:var(--secondary);font-size:15px}
+.bento-dashboard .health-panel{grid-column:span 4;grid-row:span 2;margin:0;padding:23px;display:flex;flex-direction:column}
+.health-orbit{font-size:29px;color:var(--accent)}.health-items{display:flex;flex-direction:column;gap:0;margin:16px 0 22px}.health-items>span{display:flex;flex-direction:column;gap:5px;padding:16px 0;border-bottom:1px solid var(--border)}
+.health-items small{font-size:11px;color:var(--secondary)}.health-items strong{font-size:14px;font-weight:550;overflow-wrap:anywhere}.health-panel .row-actions{margin-top:auto;gap:7px;flex-wrap:wrap}.health-panel .row-actions .text-button{padding-left:0;padding-right:10px}
+.bento-dashboard .recent-work{grid-column:span 8;padding:23px}.recent-work .section-title{margin-bottom:15px}.recent-work h2{margin:0;font-size:18px}.recent-work .job-list{gap:0}
+.recent-work .job-card{border:0;border-radius:12px;padding:15px 8px;box-shadow:none}.recent-work .job-card+.job-card{border-top:1px solid var(--border);border-radius:0}.recent-icon{display:grid;place-items:center;flex-shrink:0;width:36px;height:40px;border:1px solid var(--border);border-radius:10px;background:var(--surface-alt);font-size:19px;color:var(--secondary)}
+.recent-work .job-info{flex:1;min-width:0}.recent-work .job-card h3{font-size:12px}.recent-work .job-card p{font-size:10px;margin-top:5px}.recent-arrow{color:var(--secondary);font-size:15px}
+@media(min-width:1600px){main{padding-top:25px}.bento-hero{min-height:340px;padding:36px 40px}}
+@media(max-width:1150px){.workspace{grid-template-columns:200px minmax(0,1fr)}.sidebar{padding:28px 13px}.topbar{padding:0 22px}main{padding:12px 22px 35px}.bento-dashboard{gap:15px}.bento-hero{grid-column:span 7;padding:26px}.bento-stats{grid-column:span 5}.bento-stats section{padding:16px}.bento-dashboard .readiness,.bento-dashboard .recent-work{grid-column:span 7}.bento-dashboard .health-panel{grid-column:span 5}.readiness-grid{grid-template-columns:1fr}.readiness-step{padding:15px 17px 15px 55px}.check-state{position:absolute;left:15px;top:17px}.readiness-step strong{margin:0 16px 5px 0}.tile-arrow{top:16px}.bento-hero h1{font-size:32px}}
+@media(max-width:850px){.bento-hero,.bento-stats,.bento-dashboard .readiness,.bento-dashboard .health-panel,.bento-dashboard .recent-work{grid-column:1/-1;grid-row:auto}.bento-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.bento-stats section:last-child{grid-column:auto;display:flex;align-items:stretch;gap:0}.bento-stats section>span{display:none}.bento-stats section:last-child .text-button{font-size:10px;padding:0;align-self:start}.bento-stats strong{font-size:34px}.bento-stats strong small{display:none}.readiness-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.readiness-step{padding:15px}.check-state{position:static}.readiness-step strong{margin:12px 0 6px}.health-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 20px}.health-items>span{padding:14px 0}.report-layout{grid-template-columns:1fr}.study-layout{grid-template-columns:1fr}.study-outline{position:static;max-height:300px}}
+@media(max-width:760px){.workspace{display:block}.sidebar{height:auto;position:relative;display:block;padding:17px 16px;border-bottom:1px solid var(--border);border-right:0;overflow:visible}.brand{font-size:19px}.brand small{display:none}.brand-mark{width:31px;height:31px;font-size:24px}.sidebar nav{display:flex;gap:5px;overflow-x:auto;margin-top:17px;padding-bottom:4px}.nav-item{width:auto;flex-shrink:0;padding:10px 12px;margin:0;font-size:12px;gap:7px}.nav-item>span:first-child{font-size:17px;width:auto}.nav-caption,.sidebar-note,.account-card,.sidebar-bottom{display:none}.topbar{height:auto;min-height:65px;padding:14px 18px;gap:10px;flex-wrap:wrap}.topbar-actions{gap:7px}.topbar-actions select{max-width:105px;font-size:11px}main{padding:8px 16px 30px}.bento-hero{border-radius:23px;padding:25px;min-height:305px}.bento-hero h1{font-size:34px;max-width:450px}.hero-kicker{margin-bottom:22px}.hero-footer{font-size:9px}.bento-stats{gap:10px}.bento-stats section{padding:15px 12px;border-radius:18px}.bento-stats strong{font-size:31px}.stat-heading{font-size:10px;align-items:flex-start}.stat-heading>span:last-child{font-size:15px}.bento-dashboard .readiness,.bento-dashboard .recent-work,.bento-dashboard .health-panel{padding:20px}.readiness-grid{grid-template-columns:1fr}.readiness-step{padding:15px 17px 15px 55px}.check-state{position:absolute;left:15px;top:17px}.readiness-step strong{margin:0 15px 5px 0}.readiness-step p{font-size:11px}.page-heading{align-items:flex-start;flex-direction:column}.page-actions{flex-wrap:wrap}.toolbar{padding:14px;align-items:stretch}.job-card{padding:17px}.recent-arrow{display:none}.recent-icon{width:30px;height:35px}.recent-work .job-card{gap:10px}.section-title .text-button{font-size:10px}.connection-banner{margin:0 16px 12px}.steps{padding:16px;gap:5px}.library-table td,.sessions-table td{padding:16px}.footer{font-size:9px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
+/* The lime feature tile keeps its own contrast in both themes. */
+:root[data-theme=dark] .bento-hero :is(h1,p,.hero-kicker,.hero-edition,.hero-footer,.hero-footer span){color:var(--hero-ink)}
+:root[data-theme=dark] .bento-hero .primary{background:#293d2e;color:#fff}
+:root[data-theme=dark] .bento-hero .secondary{background:#ffffff70;border-color:#243a2a15;color:var(--hero-ink)}
+.sidebar-note{display:none}
+@media(max-width:760px){.account-card{display:flex;flex-wrap:wrap;align-items:center;gap:9px 14px;margin-top:12px;padding:12px}.account-card p{display:none}.account-card .wide{width:auto;margin-left:auto}.account-card details{flex-basis:100%;margin-top:0}.account-card details small{max-width:100%}.account-card details input{width:100%}}
