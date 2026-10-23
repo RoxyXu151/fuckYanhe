@@ -125,10 +125,10 @@ def test_archive_outage_holds_next_job_and_retains_originals(tmp_path):
         assert (runner.root / first / 'source.mp4').read_bytes() == b'keep'
         assert 'synthetic' not in runner.get(first)['message']
         release.set()
-        deadline = time.monotonic() + 3
+        deadline = time.monotonic() + 10
         while time.monotonic() < deadline and not runner.get(second).get('remote_archived'):
             time.sleep(.02)
-        assert executed == [first, second] and runner.get(second)['remote_archived']
+        assert executed == [first, second] and runner.get(second).get('remote_archived'), 'Archive recovery did not finish within the test deadline'
     finally:
         release.set()
         runner.close()

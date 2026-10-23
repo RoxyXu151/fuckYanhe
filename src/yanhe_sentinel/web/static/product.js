@@ -73,6 +73,13 @@ function renderHome(){
   const checks=[{label:'选择模型服务',ok:configured(true),action:'settings',hint:'自建模型或线上 API，可分别配置转写与分析'},
     {label:'连接课程或导入文件',ok:state.auth.connected||state.jobs.length>0,action:'classroom',hint:'校园登录只用于新录播；已有报告可离线查看'},
     {label:'回看结果与开始复习',ok:state.jobs.some(j=>j.status==='completed'),action:'study',hint:'通知报告、文字稿和讲义集中保存在本机'}];
+  if(window.fuckYanheUI){window.fuckYanheUI.renderHome($('#main-content'),{
+    t:ui.t,connected:state.auth.connected,configured:configured(true),model:s.event_model,
+    courses:state.library.filter(c=>!c.archived).length,completed:state.jobs.filter(j=>j.status==='completed'&&j.source!=='demo').length,
+    pending:active.length+unfinished.length+(state.studyTasks||[]).filter(task=>task.status!=='completed').length,
+    jobs:state.jobs.map(j=>({...j,course:savedCourse(j.request?.course_id)?.title||''})),health,checks,onJob:openJob,
+    onAction:async action=>{if(action==='settings')return openSettings();if(action==='refresh')return loadHealth();if(action==='local')return $('#local-file').click();if(action==='study')return openStudyPicker();if(action==='demo'){try{const job=await api('/api/demo',{method:'POST'});state.jobs=[job,...state.jobs.filter(j=>j.id!==job.id)];renderAccount();await openJob(job.id);}catch(error){toast(error.message,true);}return;}showView(action);}
+  });return;}
   $('#main-content').innerHTML=`<div class="bento-dashboard">
     <section class="bento-hero"><div class="hero-kicker"><span class="hero-logomark">◎</span> fuckYanhe <span class="hero-edition">${ui.t('学习工作台')}</span></div>
       <h1>${ui.t('把课堂里的重要信息，留在眼前。')}</h1><p>${ui.t('从录播到通知与讲义，接着上次的进度继续。')}</p>

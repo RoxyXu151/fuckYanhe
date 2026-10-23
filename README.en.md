@@ -6,6 +6,10 @@ Find attendance checks, homework, exams, grading rules and schedule changes in l
 
 This is a local web workspace, not an official university product. Model results require human review. A completed analysis or an empty result does not guarantee that nothing was missed.
 
+## v0.9.0 · shadcn/ui
+
+React and official shadcn/ui components power the dashboard, with a white, green, black and red palette. Existing course, report, study and model workflows, bilingual UI and themes are retained. See [frontend development](ui/README.md).
+
 ## v0.8.1 · Bento Grid
 
 A Bento dashboard and unified course, report and study surfaces. Existing workflows, bilingual UI and light/dark themes are retained, with responsive narrow-screen layouts.
