@@ -6,6 +6,10 @@ Find attendance checks, homework, exams, grading rules and schedule changes in l
 
 This is a local web workspace, not an official university product. Model results require human review. A completed analysis or an empty result does not guarantee that nothing was missed.
 
+## One report per course
+
+Each official course has one stable report containing all its recordings. Retries reuse the latest completed result per recording and preserve existing complete content. Home, reports, and the study picker group entries by course. Export the combined report as Markdown; original evidence, subtitles, reviews, and caches remain available. Different official course IDs stay separate even when their titles match.
+
 ## v0.9.0 · shadcn/ui
 
 React and official shadcn/ui components power the dashboard, with a white, green, black and red palette. Existing course, report, study and model workflows, bilingual UI and themes are retained. See [frontend development](ui/README.md).

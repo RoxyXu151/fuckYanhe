@@ -7,8 +7,9 @@ function writeRoute(view=state.view){
   let path=view;
   if(view==='study'&&studyState.jobId)path+='/' + studyState.jobId;
   if(view==='report'&&state.currentJob)path+='/' + state.currentJob;
+  if(view==='course-report'&&courseReportState.id)path+='/' + encodeURIComponent(courseReportState.id);
   if(view==='library'&&state.savedCourse)path='course/'+encodeURIComponent(state.savedCourse);
-  if(['study','report'].includes(view)&&path.includes('/')&&productState.detailOrigin)path+='?from='+encodeURIComponent(productState.detailOrigin);
+  if(['study','report','course-report'].includes(view)&&path.includes('/')&&productState.detailOrigin)path+='?from='+encodeURIComponent(productState.detailOrigin);
   if(location.hash!=='#/'+path)history.pushState(null,'','#/'+path);
 }
 async function restoreRoute(){
@@ -19,7 +20,8 @@ async function restoreRoute(){
     if(['study','report'].includes(view)&&id&&state.jobs.some(job=>job.id===id)){
       productState.detailOrigin=validDetailOrigin(new URLSearchParams(query).get('from'));
       if(view==='study')await openStudy(id);else await openJob(id);
-    }else if(view==='course'&&id&&savedCourse(decodeURIComponent(id))){state.savedCourse=decodeURIComponent(id);showView('library');}
+    }else if(view==='course-report'&&id&&savedCourse(decodeURIComponent(id))){productState.detailOrigin=validDetailOrigin(new URLSearchParams(query).get('from'));await openCourseReport(decodeURIComponent(id));}
+    else if(view==='course'&&id&&savedCourse(decodeURIComponent(id))){state.savedCourse=decodeURIComponent(id);showView('library');}
     else if(['home','library','study','queue','history','classroom','local'].includes(view)&&parts.length===1){
       if(view==='library')state.savedCourse=null;
       if(view==='study'){saveStudyProgress(true);productState.studyOpenRequest++;studyState.jobId=null;studyState.data=null;}
@@ -27,21 +29,23 @@ async function restoreRoute(){
     }
     else{showView('home');history.replaceState(null,'','#/home');}
   }catch(error){showView('home');history.replaceState(null,'','#/home');toast(error.message,true);}
-  finally{productState.restoring=false;}
+  finally{productState.restoring=false;if(state.view==='course-report')writeRoute();}
 }
 function validDetailOrigin(origin){
   if(['home','library','study','queue','history'].includes(origin))return origin;
+  if(origin?.startsWith('course-report/')&&savedCourse(decodeURIComponent(origin.split('?')[0].slice(14))))return origin;
   if(origin?.startsWith('course/')&&savedCourse(decodeURIComponent(origin.slice(7))))return origin;
   return null;
 }
 function rememberDetailOrigin(id){
   if(productState.restoring)return;
+  if(state.view==='course-report'){const parent=validDetailOrigin(productState.detailOrigin);productState.detailOrigin='course-report/'+encodeURIComponent(courseReportState.id)+(parent&&!parent.startsWith('course-report/')?'?from='+encodeURIComponent(parent):'');return;}
   if(['report','study'].includes(state.view)&&(state.view!=='study'||studyState.jobId))return;
   productState.detailOrigin=state.view==='library'&&state.savedCourse
     ?'course/'+encodeURIComponent(state.savedCourse):validDetailOrigin(state.view);
 }
 function detailBackLabel(){
-  return ui.t(productState.detailOrigin?.startsWith('course/')?'← 返回课程课次':
+  return ui.t(productState.detailOrigin?.startsWith('course-report/')?'← 返回课程报告':productState.detailOrigin?.startsWith('course/')?'← 返回课程课次':
     productState.detailOrigin==='queue'?'← 返回任务队列':
     productState.detailOrigin==='home'?'← 返回工作台':
     productState.detailOrigin==='study'?'选择其他课次':
@@ -49,6 +53,7 @@ function detailBackLabel(){
 }
 function returnFromDetail(){
   const origin=validDetailOrigin(productState.detailOrigin);
+  if(origin?.startsWith('course-report/')){const [path,query='']=origin.split('?');const parent=new URLSearchParams(query).get('from');productState.detailOrigin=parent&&!parent.startsWith('course-report/')?validDetailOrigin(parent):'history';openCourseReport(decodeURIComponent(path.slice(14)));return;}
   if(origin?.startsWith('course/')){state.savedCourse=decodeURIComponent(origin.slice(7));showView('library');return;}
   if(origin==='library')state.savedCourse=null;
   if(origin==='study'){openStudyPicker();return;}
@@ -75,9 +80,9 @@ function renderHome(){
     {label:'回看结果与开始复习',ok:state.jobs.some(j=>j.status==='completed'),action:'study',hint:'通知报告、文字稿和讲义集中保存在本机'}];
   if(window.fuckYanheUI){window.fuckYanheUI.renderHome($('#main-content'),{
     t:ui.t,connected:state.auth.connected,configured:configured(true),model:s.event_model,
-    courses:state.library.filter(c=>!c.archived).length,completed:state.jobs.filter(j=>j.status==='completed'&&j.source!=='demo').length,
+    courses:state.library.filter(c=>!c.archived).length,completed:state.library.reduce((n,c)=>n+c.completed_sessions,0)+state.jobs.filter(j=>j.status==='completed'&&j.source==='local').length,
     pending:active.length+unfinished.length+(state.studyTasks||[]).filter(task=>task.status!=='completed').length,
-    jobs:state.jobs.map(j=>({...j,course:savedCourse(j.request?.course_id)?.title||''})),health,checks,onJob:openJob,
+    jobs:reportEntries().map(j=>({...j,id:j.entry_id})),health,checks,onJob:openReportEntry,
     onAction:async action=>{if(action==='settings')return openSettings();if(action==='refresh')return loadHealth();if(action==='local')return $('#local-file').click();if(action==='study')return openStudyPicker();if(action==='demo'){try{const job=await api('/api/demo',{method:'POST'});state.jobs=[job,...state.jobs.filter(j=>j.id!==job.id)];renderAccount();await openJob(job.id);}catch(error){toast(error.message,true);}return;}showView(action);}
   });return;}
   $('#main-content').innerHTML=`<div class="bento-dashboard">
@@ -85,11 +90,11 @@ function renderHome(){
       <h1>${ui.t('把课堂里的重要信息，留在眼前。')}</h1><p>${ui.t('从录播到通知与讲义，接着上次的进度继续。')}</p>
       <div class="page-actions"><button class="button primary" data-action="classroom">${ui.t('添加课程')} <span aria-hidden="true">↗</span></button><button class="button secondary" data-action="local">${ui.t('导入本地文件')}</button></div>
       <div class="hero-footer"><span><i class="connection-dot ${state.auth.connected?'connected':''}"></i>${ui.t(state.auth.connected?'已连接延河课堂':'尚未连接延河课堂')}</span><span>${ui.t('本机保存 · 自选模型服务')}</span></div></section>
-    <div class="bento-stats workspace-stats"><section><div class="stat-heading"><span>${ui.t('在用课程')}</span><span aria-hidden="true">▦</span></div><strong>${state.library.filter(c=>!c.archived).length}<small>${ui.t('门')}</small></strong><span>${ui.t('课程与历史记录，集中保存')}</span></section><section><div class="stat-heading"><span>${ui.t('已完成课次')}</span><span aria-hidden="true">✓</span></div><strong>${state.jobs.filter(j=>j.status==='completed'&&j.source!=='demo').length}<small>${ui.t('段可用录播')}</small></strong><span>${ui.t('随时回看字幕与事项报告')}</span></section><section><div class="stat-heading"><span>${ui.t('进行中 / 待继续')}</span><span aria-hidden="true">◷</span></div><strong>${active.length+unfinished.length+(state.studyTasks||[]).filter(task=>task.status!=='completed').length}</strong><button class="text-button" data-action="queue">${ui.t('查看待继续任务')} ↗</button></section></div>
+    <div class="bento-stats workspace-stats"><section><div class="stat-heading"><span>${ui.t('在用课程')}</span><span aria-hidden="true">▦</span></div><strong>${state.library.filter(c=>!c.archived).length}<small>${ui.t('门')}</small></strong><span>${ui.t('课程与历史记录，集中保存')}</span></section><section><div class="stat-heading"><span>${ui.t('已完成课次')}</span><span aria-hidden="true">✓</span></div><strong>${state.library.reduce((n,c)=>n+c.completed_sessions,0)+state.jobs.filter(j=>j.status==='completed'&&j.source==='local').length}<small>${ui.t('段可用录播')}</small></strong><span>${ui.t('随时回看字幕与事项报告')}</span></section><section><div class="stat-heading"><span>${ui.t('进行中 / 待继续')}</span><span aria-hidden="true">◷</span></div><strong>${active.length+unfinished.length+(state.studyTasks||[]).filter(task=>task.status!=='completed').length}</strong><button class="text-button" data-action="queue">${ui.t('查看待继续任务')} ↗</button></section></div>
     <section class="panel readiness"><div class="section-title"><h2>${ui.t('开始使用')}</h2><button class="text-button" data-action="demo">${ui.t('查看演示报告')} ↗</button></div><div class="readiness-grid">${checks.map((item,index)=>`<button data-action="${item.action}" class="readiness-step"><span class="check-state">${item.ok?'✓':String(index+1).padStart(2,'0')}</span><strong>${ui.t(item.label)}</strong><p>${ui.t(item.hint)}</p><span class="tile-arrow" aria-hidden="true">↗</span></button>`).join('')}</div></section>
     <section class="panel health-panel"><div class="section-title"><h2>${ui.t('本机与服务状态')}</h2><span class="health-orbit" aria-hidden="true">◎</span></div><div class="health-items"><span><small>${ui.t('校园平台')}</small><strong>${ui.t(state.auth.connected?'已连接延河课堂':'尚未连接延河课堂')}</strong></span><span><small>${ui.t('分析模型')}</small><strong>${configured(true)?esc(s.event_model):ui.t('尚未配置')}</strong></span><span><small>${ui.t('媒体工具')}</small><strong>${health?ui.t(health.media_ready?'可用':'待安装'):ui.t('正在检查')}</strong></span><span><small>${ui.t('本机存储')}</small><strong>${health?ui.t(health.storage_ready?'可写':'不可写'):ui.t('正在检查')}</strong>${health?.free_bytes!=null?`<small>${(health.free_bytes/1073741824).toFixed(1)} GB ${ui.t('可用空间')}</small>`:''}</span></div><div class="row-actions"><button class="text-button" id="refresh-health">${ui.t('刷新状态')} ↻</button><button class="text-button" data-action="settings">${ui.t('配置与检测模型')} ↗</button></div></section>
-    <section class="panel recent-work"><div class="section-title"><h2>${ui.t('最近处理')}</h2><button class="text-button" data-action="history">${ui.t('查看全部报告与记录')} ↗</button></div><div class="job-list">${state.jobs.slice(0,5).map(job=>`<button class="job-card" data-job="${esc(job.id)}"><span class="recent-icon" aria-hidden="true">▤</span><div class="job-info"><h3>${esc(job.title)}</h3><p>${esc(savedCourse(job.request?.course_id)?.title||ui.message(job.message))}</p></div>${jobBadge(job)}<span class="recent-arrow" aria-hidden="true">↗</span></button>`).join('')||`<div class="empty"><p>${ui.t('还没有处理记录，可以先查看演示或导入自己的字幕。')}</p></div>`}</div></section></div>`;
-  bindActions();bindJobLinks();$('#refresh-health').onclick=loadHealth;
+    <section class="panel recent-work"><div class="section-title"><h2>${ui.t('课程报告')}</h2><button class="text-button" data-action="history">${ui.t('查看全部报告与记录')} ↗</button></div><div class="job-list">${reportEntries().slice(0,5).map(job=>`<button class="job-card" ${reportEntryAttribute(job)}><span class="recent-icon" aria-hidden="true">▤</span><div class="job-info"><h3>${esc(job.title)}</h3><p>${esc(savedCourse(job.request?.course_id)?.title||ui.message(job.message))}</p></div>${jobBadge(job)}<span class="recent-arrow" aria-hidden="true">↗</span></button>`).join('')||`<div class="empty"><p>${ui.t('还没有处理记录，可以先查看演示或导入自己的字幕。')}</p></div>`}</div></section></div>`;
+  bindActions();bindJobLinks();bindReportLinks();$('#refresh-health').onclick=loadHealth;
 }
 function modelFormValues(){
   const values=Object.fromEntries(new FormData($('#settings-form')));delete values.remember_defaults;

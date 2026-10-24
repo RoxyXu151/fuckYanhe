@@ -540,5 +540,21 @@
   "fuckYanhe · 课堂工作台": "fuckYanhe · Classroom Workbench",
   "把课堂里的重要信息，留在眼前。": "Keep what matters from every class.",
   "课程与历史记录，集中保存": "Your courses and history, in one place",
-  "随时回看字幕与事项报告": "Transcripts and notices, ready to revisit"
+  "随时回看字幕与事项报告": "Transcripts and notices, ready to revisit",
+  "事项、原文或课次名称": "Notice, source quote, or recording title",
+  "份报告": "reports",
+  "刷新报告": "Refresh report",
+  "原录播": "Original recording",
+  "原字幕": "Original subtitles",
+  "导出字幕": "Export subtitles",
+  "已有结果的课次": "Recordings with results",
+  "本课次采用最近的已完成结果，重试不会覆盖已有完整内容。": "Using the latest completed result. A retry preserves the existing complete content.",
+  "查看课程报告": "View course report",
+  "每门课程一份报告，自动汇总各课次；重试结果更新到原报告。": "One report per course, with all recordings included. Retries update the same report.",
+  "点击事项时间，可切换到对应课次的原录播。": "Select a timestamp to play the corresponding original recording.",
+  "课程报告": "Course reports",
+  "这个课次的报告尚未生成或无法读取，请在任务队列继续处理。": "This recording has no readable result yet. Continue processing it in the task queue.",
+  "部分课次尚未完成，以下报告仅覆盖已生成的结果。": "Some recordings are incomplete. This report covers the available results only.",
+  "← 返回课程报告": "← Back to course report",
+  "导出课次证据": "Export recording evidence"
 }

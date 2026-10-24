@@ -7,10 +7,11 @@ function app(){
   const ctx=vm.createContext({URLSearchParams,window:{addEventListener(){}},
     state:{view:'library',savedCourse:'os',jobs:[{id:'job'}]},studyState:{jobId:'old',data:{}},
     location:{hash:'#/library'},savedCourse:id=>['os','language'].includes(id)?{id}:null,
-    ui:{t:s=>s},$:()=>null,saveStudyProgress(){},toast(){}});
+    courseReportState:{id:null},ui:{t:s=>s},$:()=>null,saveStudyProgress(){},toast(){}});
   vm.runInContext(`function showView(v){state.view=v;writeRoute(v);}
     async function openJob(id){state.currentJob=id;showView('report');}
     async function openStudy(id){studyState.jobId=id;showView('study');}
+    async function openCourseReport(id){rememberDetailOrigin();courseReportState.id=id;showView('course-report');}
     const history={pushState(a,b,p){location.hash=p;},replaceState(a,b,p){location.hash=p;}};`,ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname,'../src/yanhe_sentinel/web/static/product.js'),'utf8'),ctx);
   return ctx;
@@ -43,4 +44,20 @@ test('history origin is retained across report to study switch',()=>{
     writeRoute('study');`,c);
   assert.equal(c.location.hash,'#/study/job?from=history');
   vm.runInContext('returnFromDetail()',c);assert.equal(c.state.view,'history');
+});
+
+test('canonical course report restores its course and original entry on refresh',async()=>{
+  const c=app();c.location.hash='#/course-report/language?from=course%2Flanguage';
+  await vm.runInContext('restoreRoute()',c);
+  assert.equal(c.state.view,'course-report');assert.equal(c.courseReportState.id,'language');
+  vm.runInContext('returnFromDetail()',c);assert.equal(c.state.savedCourse,'language');
+  assert.equal(c.location.hash,'#/course/language');
+});
+
+test('study returns to the canonical report and preserves the report entry across refresh',async()=>{
+  const c=app();
+  c.location.hash='#/study/job?from='+encodeURIComponent('course-report/language?from=home');
+  await vm.runInContext('restoreRoute()',c);vm.runInContext('returnFromDetail()',c);
+  assert.equal(c.state.view,'course-report');assert.equal(c.courseReportState.id,'language');
+  vm.runInContext('returnFromDetail()',c);assert.equal(c.state.view,'home');
 });

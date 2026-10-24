@@ -12,10 +12,10 @@ async function openStudy(id){
 function renderStudy(){
   writeRoute('study');
   if(!studyState.jobId){
-    const available=state.jobs.filter(job=>terminal.has(job.status));
+    const available=reportEntries();
     $('#main-content').innerHTML=heading(ui.t('听课'),ui.t('用已有文字稿复习：搜索原文、跳转录播、整理章节与讲义。'))+
-      `<div class="job-list">${available.map(job=>`<button class="job-card" data-study-job="${esc(job.id)}"><div class="job-info"><h3>${esc(job.title)}</h3><p>${esc(job.source==='demo'?ui.t('合成演示'):savedCourse(job.request.course_id)?.title||ui.t('本地文件'))}</p></div>${jobBadge(job)}<span>▷</span></button>`).join('')||`<div class="empty"><h3>${ui.t('先准备一份文字稿')}</h3><p>${ui.t('完成录播转写或导入字幕后，即可开始听课。')}</p></div>`}</div>`;
-    bindStudyLinks();return;
+      `<div class="job-list">${available.map(entry=>entry.course_id?`<section class="panel study-course-group"><div class="section-title"><h3>${esc(entry.title)}</h3><button class="button secondary" data-course-report="${esc(entry.course_id)}">${ui.t('查看课程报告')}</button></div><div class="job-list">${(savedCourse(entry.course_id)?.sessions||[]).filter(s=>s.completed_job_id||terminal.has(s.status)).map(s=>`<button class="job-card" data-study-job="${esc(s.completed_job_id||s.latest_job_id)}"><div class="job-info"><h3>${esc(s.title)}</h3><p>${esc(dateLabel(s.started_at))}</p></div><span>▷ ${ui.t('听课')}</span></button>`).join('')||`<p class="option-hint">${ui.t('先准备一份文字稿')}</p>`}</div></section>`:terminal.has(entry.status)?`<button class="job-card" data-study-job="${esc(entry.job_id)}"><div class="job-info"><h3>${esc(entry.title)}</h3><p>${ui.t(entry.source==='demo'?'合成演示':'本地文件')}</p></div>${jobBadge(entry)}<span>▷</span></button>`:'').join('')||`<div class="empty"><h3>${ui.t('先准备一份文字稿')}</h3><p>${ui.t('完成录播转写或导入字幕后，即可开始听课。')}</p></div>`}</div>`;
+    bindStudyLinks();bindReportLinks();return;
   }
   const d=studyState.data;
   $('#main-content').innerHTML=`<button class="back-button" id="study-back">${detailBackLabel()}</button>`+

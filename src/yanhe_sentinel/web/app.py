@@ -26,7 +26,7 @@ from .auth import BrowserLogin
 from .session_store import MemorySessionStore, WindowsSessionStore, SavedSession
 from .jobs import JobRunner, atomic_json
 from .models import BatchRequest, JobRequest, LibraryUpdate, ModelSettings
-from .library import CourseLibrary
+from .library import CourseLibrary, course_report, course_report_markdown
 from .learning import StudyRequest, StudyRunner
 from .product import (Preferences, StudyRecords, StudyProgress, BookmarkInput, NoteInput,
                       RetrySelection, merge_settings, test_connection)
@@ -450,6 +450,19 @@ def create_app(data_dir=None, *, client_factory=YanheClient, login_manager=None,
         reviews_file = directory / 'reviews.json'
         reviews = json.loads(reviews_file.read_text('utf-8')) if reviews_file.exists() else {}
         return {'report': data, 'links': links, 'event_links': event_links, 'reviews': reviews}
+
+    @app.get('/api/library/{course_id}/report')
+    def report_for_course(course_id: str, request: Request, format: str = Query('json', pattern='^(json|markdown)$')):
+        session_for(request)
+        course = next((item for item in library.snapshot(jobs.list()) if item['id'] == course_id), None)
+        if course is None:
+            raise ValueError('课程尚未保存，请先读取课程')
+        data = course_report(course, lambda job_id: report(job_id, request))
+        if format == 'markdown':
+            return StreamingResponse(iter([course_report_markdown(data).encode('utf-8')]),
+                media_type='text/markdown; charset=utf-8',
+                headers={'Content-Disposition': f'attachment; filename="course-{course_id}.md"'})
+        return data
 
     @app.get('/api/jobs/{job_id}/learning')
     def learning(job_id: str, request: Request):
